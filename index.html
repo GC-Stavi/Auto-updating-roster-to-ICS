@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Roster to ICS Exporter</title>
+  <style>
+    body { font-family: sans-serif; margin: 1em; background: #f8f8f8; }
+    textarea { width: 100%; height: 300px; font-family: monospace; padding: 1em; }
+    button { margin: 0.5em 0.5em 0 0; padding: 0.6em 1.2em; font-size: 1em; cursor: pointer; }
+    .container { max-width: 1000px; margin: auto; background: #fff; padding: 1em; box-shadow: 0 0 10px #ccc; border-radius: 8px; }
+
+    table#printTable { width: 100%; border-collapse: collapse; margin-top: 1em; display: none; }
+    table#printTable, table#printTable th, table#printTable td {
+      border: 1px solid #333;
+    }
+    table#printTable th, table#printTable td {
+      padding: 2px 4px;
+      font-size: 9pt;
+      text-align: left;
+      vertical-align: top;
+      white-space: pre-wrap;
+    }
+
+    @media print {
+      body { background: white; margin: 0; }
+      .container { box-shadow: none; padding: 0; max-width: 100%; }
+      textarea, button { display: none; }
+      table#printTable { display: table; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <textarea id="rosterInput" placeholder="Paste your roster here..."></textarea><br/>
+    <button onclick="generatePrintout()">Print This Page</button>
+    <button onclick="generateICS()">Download ICS File</button>
+
+    <table id="printTable">
+      <thead>
+        <tr>
+          <th>Duty Date</th>
+          <th>Duty</th>
+          <th>Brief</th>
+          <th>Debrief</th>
+          <th>Layover</th>
+          <th>Details</th>
+          <th>Duty</th>
+          <th>Flight</th>
+          <th>Pax</th>
+          <th>Credit</th>
+        </tr>
+      </thead>
+      <tbody id="printTableBody"></tbody>
+    </table>
+  </div>
+
+  <script>
+    function pad(n) { return n.toString().padStart(2, '0'); }
+
+    function generateICS() {
+      const input = document.getElementById('rosterInput').value.trim();
+      if (!input) return alert("Paste your roster first.");
+
+      const lines = input.split('\n');
+      const newBlockRegex = /^\d{2}\/\w{3}\/\d{4}[ \t]/;
+      const timeSummaryRegex = /^\d{1,2}:\d{2}[ \t]+\d{1,2}:\d{2}[ \t]+\d{1,2}:\d{2}[ \t]+\d{1,2}:\d{2}$/;
+      let buffer = [];
+      let events = [];
+
+      function flushRow() {
+        if (!buffer.length) return;
+        const row = Array(10).fill('');
+        const start = buffer[0].split(/\t| {2,}/);
+        for (let i = 0; i < start.length && i < 5; i++) row[i] = start[i];
+
+        const summaryIndex = buffer.findIndex(l => timeSummaryRegex.test(l));
+        let summary = [];
+        if (summaryIndex !== -1) {
+          summary = buffer[summaryIndex].split(/\t| {2,}/);
+          buffer.splice(summaryIndex, 1);
+        }
+
+        row[5] = buffer.slice(1).join('\n');
+        for (let i = 0; i < summary.length; i++) row[6 + i] = summary[i];
+
+        const dateStr = row[0];
+        const brief = row[2] || '00:00';
+        const debrief = row[3] || '00:00';
+        const duty = row[1];
+        const details = row[5].replace(/\n/g, ' | ');
+        const [dd, mon, yyyy] = dateStr.split(/[\/\s]/);
+        const months = {Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11};
+        const d = new Date(yyyy, months[mon], dd);
+
+        const formatTime = (t) => t.replace(/:/g, '') + '00';
+
+        const dtStart = yyyy + pad(d.getMonth() + 1) + pad(d.getDate()) + 'T' + formatTime(brief);
+        const dtEnd = yyyy + pad(d.getMonth() + 1) + pad(d.getDate()) + 'T' + formatTime(debrief);
+
+        events.push(`BEGIN:VEVENT\nSUMMARY:${duty} ${details}\nDTSTART;TZID=Australia/Brisbane:${dtStart}\nDTEND;TZID=Australia/Brisbane:${dtEnd}\nDESCRIPTION:Brief: ${brief} | ${details}\nUID:roster-${dtStart}@roster.local\nDTSTAMP:${dtStart}Z\nEND:VEVENT`);
+        buffer = [];
+      }
+
+      lines.forEach(line => {
+        if (newBlockRegex.test(line)) flushRow();
+        buffer.push(line);
+      });
+      flushRow();
+
+      const ics = `BEGIN:VCALENDAR\nVERSION:2.0\nCALSCALE:GREGORIAN\nMETHOD:PUBLISH\nX-WR-TIMEZONE:Australia/Brisbane\nBEGIN:VTIMEZONE\nTZID:Australia/Brisbane\nBEGIN:STANDARD\nDTSTART:19700101T000000\nTZOFFSETFROM:+1000\nTZOFFSETTO:+1000\nTZNAME:AEST\nEND:STANDARD\nEND:VTIMEZONE\n${events.join('\n')}\nEND:VCALENDAR`;
+
+      const blob = new Blob([ics.replace(/\n/g, "\r\n")], { type: 'text/calendar' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'roster_export.ics';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+
+    function generatePrintout() {
+      const input = document.getElementById('rosterInput').value.trim();
+      if (!input) return alert("Paste your roster first.");
+
+      const lines = input.split('\n');
+      const tbody = document.getElementById('printTableBody');
+      const table = document.getElementById('printTable');
+      tbody.innerHTML = '';
+
+      const newBlockRegex = /^\d{2}\/\w{3}\/\d{4}[ \t]/;
+      const timeSummaryRegex = /^\d{1,2}:\d{2}[ \t]+\d{1,2}:\d{2}[ \t]+\d{1,2}:\d{2}[ \t]+\d{1,2}:\d{2}$/;
+
+      let buffer = [];
+
+      function flushRow() {
+        if (!buffer.length) return;
+
+        const row = Array(10).fill('');
+        const start = buffer[0].split(/\t| {2,}/);
+        for (let i = 0; i < start.length && i < 5; i++) row[i] = start[i];
+
+        const summaryIndex = buffer.findIndex(l => timeSummaryRegex.test(l));
+        let summary = [];
+        if (summaryIndex !== -1) {
+          summary = buffer[summaryIndex].split(/\t| {2,}/);
+          buffer.splice(summaryIndex, 1);
+        }
+
+        row[5] = buffer.slice(1).join('\n');
+        for (let i = 0; i < summary.length; i++) row[6 + i] = summary[i];
+
+        const tr = document.createElement('tr');
+        row.forEach(val => {
+          const td = document.createElement('td');
+          td.textContent = val;
+          tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+        buffer = [];
+      }
+
+      lines.forEach(line => {
+        if (newBlockRegex.test(line)) flushRow();
+        buffer.push(line);
+      });
+      flushRow();
+
+      table.style.display = 'table';
+      window.print();
+      table.style.display = 'none';
+    }
+  </script>
+</body>
+</html>
