@@ -355,12 +355,11 @@
         // --- NEW BREACH CHECKING FUNCTIONALITY ---
 
         function parseTime(timeStr) {
-            // Handles cases where time might be missing or invalid
             if (!timeStr || typeof timeStr !== 'string' || !timeStr.includes(':')) {
-                return NaN; // Indicate invalid time
+                return NaN;
             }
             const [hours, minutes] = timeStr.split(':').map(Number);
-            return hours * 60 + minutes; // Return total minutes from midnight
+            return hours * 60 + minutes;
         }
 
         function formatMinutesToHHMM(totalMinutes) {
@@ -370,7 +369,6 @@
             return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
         }
 
-        // Helper function to parse roster data into a structured format
         function parseRosterData() {
             let lines = document.getElementById('rosterInput').value.trim().split('\n');
             if (!lines.length) {
@@ -388,13 +386,11 @@
                 if (!buffer.length) return;
 
                 const rowData = Array(10).fill('');
-                // First line of the buffer contains the primary data (Date, Duty, Brief, Debrief, Layover)
                 const initialSplit = buffer[0].split(/\t| {2,}/);
                 for (let i = 0; i < initialSplit.length && i < 5; i++) rowData[i] = initialSplit[i];
 
                 const [dayStr, monStr, yearStr] = rowData[0].split(/[\/\s]/);
-                // Handle cases where year might not be present or valid in the date string (e.g., if only DD/MON is provided)
-                let currentYear = new Date().getFullYear(); // Default to current year
+                let currentYear = new Date().getFullYear();
                 if (yearStr && !isNaN(Number(yearStr))) {
                      currentYear = Number(yearStr);
                 }
@@ -405,23 +401,20 @@
                 };
                 const date = new Date(currentYear, months[monStr], Number(dayStr));
 
-
                 let summaryParts = [];
-                // Find the line that looks like a time summary (e.g., "9:20 6:10 0:00 6:10")
                 const summaryIndex = buffer.findIndex(l => timeSummaryRegex.test(l));
                 if (summaryIndex !== -1) {
                     summaryParts = buffer[summaryIndex].split(/\t| {2,}/);
-                    buffer.splice(summaryIndex, 1); // Remove summary line from buffer to not include in details
+                    buffer.splice(summaryIndex, 1);
                 }
 
-                // The rest of the buffer lines (after the first and excluding summary) are the details
-                rowData[5] = buffer.slice(1).join('\n'); // Join remaining lines for 'details'
-                for (let i = 0; i < summaryParts.length; i++) rowData[6 + i] = summaryParts[i]; // Duty, Flight, Pax, Credit hours
+                rowData[5] = buffer.slice(1).join('\n');
+                for (let i = 0; i < summaryParts.length; i++) rowData[6 + i] = summaryParts[i];
 
                 rosterEntries.push({
                     date: date,
                     dateString: rowData[0],
-                    dutyType: rowData[1] ? rowData[1].trim() : '', // Trim whitespace
+                    dutyType: rowData[1] ? rowData[1].trim() : '',
                     briefTime: rowData[2] ? rowData[2].trim() : '',
                     debriefTime: rowData[3] ? rowData[3].trim() : '',
                     layover: rowData[4] ? rowData[4].trim() : '',
@@ -440,11 +433,10 @@
                 }
                 buffer.push(line);
             });
-            processBuffer(); // Process the last buffer
+            processBuffer();
 
             return rosterEntries;
         }
-
 
         function checkForBreaches() {
             const roster = parseRosterData();
@@ -454,7 +446,7 @@
             }
 
             const breachList = document.getElementById('breachList');
-            breachList.innerHTML = ''; // Clear previous results
+            breachList.innerHTML = '';
             const breachesFound = [];
 
             // Helper to add breach messages
@@ -465,38 +457,33 @@
                 breachList.appendChild(li);
             }
 
-            // --- Implement ONLY Early Starts Breach Check ---
+            // --- Implement ONLY Early Starts Breach Check (Consolidated Output) ---
 
-            // Maximum Number of Early Starts (3 starts before 0600 in any 7-day period)
-            // "Unless agreed otherwise with the Alliance Group and an individual Pilot,
-            // the Alliance Group will not roster an individual Pilot for more than three (3) starts before 0600 in any seven (7) day period." 
             const earlyStartsThreshold = 3;
             const sevenDaysInMs = 7 * 24 * 60 * 60 * 1000;
             const SIX_AM_IN_MINUTES = parseTime('06:00');
+
+            // This set will store the "end date strings" of periods for which a breach has already been reported
+            // to avoid duplicate messages for consecutive days within the same breaching period.
+            const reportedBreachWindows = new Set();
 
             for (let i = 0; i < roster.length; i++) {
                 const currentEntry = roster[i];
                 const currentBriefTimeMinutes = parseTime(currentEntry.briefTime);
 
-                // Define what constitutes an "actual duty start" for this rule.
-                // Exclude RDO, GREY DAY, SBY (Standby), and LEAVE. Also exclude if briefTime is invalid.
-                // Standby is "neither duty, nor time free of duty." 
                 const isActualDutyStartCandidate = !(
                     currentEntry.dutyType.toUpperCase().includes('RDO') ||
                     currentEntry.dutyType.toUpperCase().includes('GREY DAY') ||
-                    currentEntry.dutyType.toUpperCase().includes('SBY') || // Exclude Standby 
+                    currentEntry.dutyType.toUpperCase().includes('SBY') ||
                     currentEntry.dutyType.toUpperCase().includes('LEAVE') ||
                     isNaN(currentBriefTimeMinutes)
                 );
 
-                // If the current entry is an actual duty start candidate and it's an early start
                 if (isActualDutyStartCandidate && currentBriefTimeMinutes < SIX_AM_IN_MINUTES) {
                     let earlyStartsInWindow = 0;
-                    // The 7-day window starts from exactly 7 days before the *current duty's start date*.
-                    // The rule: "in any seven (7) day period"  which implies a rolling window.
                     const windowStartTime = new Date(currentEntry.date.getTime() - sevenDaysInMs);
+                    let violatingDatesForWindow = []; // To list dates for the current window's breach
 
-                    // Iterate through past entries up to the current one to count early starts within the window
                     for (let j = 0; j <= i; j++) {
                         const checkEntry = roster[j];
                         const checkBriefTimeMinutes = parseTime(checkEntry.briefTime);
@@ -504,44 +491,31 @@
                         const checkIsActualDutyStartCandidate = !(
                             checkEntry.dutyType.toUpperCase().includes('RDO') ||
                             checkEntry.dutyType.toUpperCase().includes('GREY DAY') ||
-                            checkEntry.dutyType.toUpperCase().includes('SBY') || // Exclude Standby 
+                            checkEntry.dutyType.toUpperCase().includes('SBY') ||
                             checkEntry.dutyType.toUpperCase().includes('LEAVE') ||
                             isNaN(checkBriefTimeMinutes)
                         );
 
-                        // Check if the entry falls within the 7-day window AND is an early actual duty start
-                        // The window is inclusive of the current day.
                         if (checkEntry.date.getTime() >= windowStartTime.getTime() &&
-                            checkEntry.date.getTime() <= currentEntry.date.getTime() && // Ensure within or before current day
+                            checkEntry.date.getTime() <= currentEntry.date.getTime() &&
                             checkIsActualDutyStartCandidate &&
                             checkBriefTimeMinutes < SIX_AM_IN_MINUTES) {
                             earlyStartsInWindow++;
+                            violatingDatesForWindow.push(`${checkEntry.dateString} (${checkEntry.briefTime})`);
                         }
                     }
 
-                    // The rule states "not more than three (3)". So, if it's 4 or more, it's a breach.
-                    // If it's exactly 3, it's compliant.
-                    if (earlyStartsInWindow > earlyStartsThreshold) { // Changed from >= to > based on "not more than three (3)"
-                        let violatingDates = [];
-                        // Collect all early starts within the *same 7-day window* that triggered the breach
-                        for (let j = 0; j <= i; j++) {
-                            const checkEntry = roster[j];
-                            const checkBriefTimeMinutes = parseTime(checkEntry.briefTime);
-                            const checkIsActualDutyStartCandidate = !(
-                                checkEntry.dutyType.toUpperCase().includes('RDO') ||
-                                checkEntry.dutyType.toUpperCase().includes('GREY DAY') ||
-                                checkEntry.dutyType.toUpperCase().includes('SBY') || // Exclude Standby 
-                                checkEntry.dutyType.toUpperCase().includes('LEAVE') ||
-                                isNaN(checkBriefTimeMinutes)
-                            );
-                            if (checkEntry.date.getTime() >= windowStartTime.getTime() &&
-                                checkEntry.date.getTime() <= currentEntry.date.getTime() &&
-                                checkIsActualDutyStartCandidate &&
-                                checkBriefTimeMinutes < SIX_AM_IN_MINUTES) {
-                                violatingDates.push(`${checkEntry.dateString} (${checkEntry.briefTime})`);
-                            }
+                    if (earlyStartsInWindow > earlyStartsThreshold) {
+                        // Create a unique key for this breach window to prevent duplicate reports
+                        // We'll use the start and end dates of the 7-day window.
+                        const windowKey = `${windowStartTime.toDateString()}-${currentEntry.date.toDateString()}`;
+
+                        if (!reportedBreachWindows.has(windowKey)) {
+                            reportedBreachWindows.add(windowKey); // Mark this window as reported
+
+                            const abbreviatedViolatingDates = violatingDatesForWindow.join(', ');
+                            addBreach(`Early Starts Breach: Detected ${earlyStartsInWindow} starts before 06:00 in the 7-day period (from ${windowStartTime.toLocaleDateString('en-AU')} to ${currentEntry.date.toLocaleDateString('en-AU')}). Max allowed is ${earlyStartsThreshold}. Violating duties: ${abbreviatedViolatingDates}.`);
                         }
-                        addBreach(`Early Starts Breach: On ${currentEntry.dateString}, there are ${earlyStartsInWindow} duties starting before 06:00 within the 7-day period (from ${windowStartTime.toLocaleDateString('en-AU')} to ${currentEntry.date.toLocaleDateString('en-AU')}). Max allowed is ${earlyStartsThreshold}. Violating duties: ${violatingDates.join(', ')}.`);
                     }
                 }
             }
@@ -555,7 +529,7 @@
                 breachList.appendChild(li);
             }
 
-            document.getElementById('breachResults').style.display = 'block'; // Show results div
+            document.getElementById('breachResults').style.display = 'block';
         }
 
 
@@ -592,7 +566,6 @@
                 for (let i = 0; i < start.length && i < 5; i++) row[i] = start[i];
 
                 const [dd, mon, yyyy] = row[0].split(/[\/\s]/);
-                // Similar year handling as in parseRosterData
                 let currentYear = new Date().getFullYear();
                 if (yyyy && !isNaN(Number(yyyy))) {
                     currentYear = Number(yyyy);
@@ -614,7 +587,7 @@
                     buffer.splice(summaryIndex, 1);
                 }
 
-                row[5] = buffer.slice(1).join('\n'); // Details from remaining buffer lines
+                row[5] = buffer.slice(1).join('\n');
                 for (let i = 0; i < summary.length; i++) row[6 + i] = summary[i];
 
                 for (let i = 6; i <= 9; i++) {
