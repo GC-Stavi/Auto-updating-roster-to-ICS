@@ -485,6 +485,9 @@
     </div>
 
     <script>
+        // Global variable to hold the modal element reference
+        const breachInfoModal = document.getElementById('breachInfoModal');
+
         function toggleDarkMode() {
             const body = document.body;
             const btn = document.getElementById('darkModeBtn');
@@ -501,6 +504,14 @@
                 document.body.classList.add('dark-mode');
                 document.getElementById('darkModeBtn').textContent = 'Switch to Light Mode';
             }
+
+            // Add event listener to close modal when clicking outside content
+            breachInfoModal.addEventListener('click', function(event) {
+                // If the click target is the overlay itself (not the modal content)
+                if (event.target === breachInfoModal) {
+                    hideBreachInfoModal();
+                }
+            });
         };
 
         function pad(n) {
@@ -534,12 +545,12 @@
                 const start = buffer[0].split(/\t| {2,}/);
                 for (let i = 0; i < start.length && i < 5; i++) row[i] = start[i];
 
-                const [dd, mon, আবদুল্লাহ] = row[0].split(/[\/\s]/);
+                const [dd, mon, yyyy] = row[0].split(/[\/\s]/);
                 const months = {
                     Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5,
                     Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11
                 };
-                const d = new Date( আবদুল্লাহ, months[mon], dd);
+                const d = new Date(yyyy, months[mon], dd);
 
                 const brief = row[2] || '00:00';
                 const debrief = row[3] || '00:00';
@@ -547,8 +558,8 @@
                 const details = row[5].replace(/\n/g, ' | ');
                 const formatTime = (t) => t.replace(/:/g, '') + '00';
 
-                const dtStart = আবদুল্লাহ + pad(d.getMonth() + 1) + pad(d.getDate()) + 'T' + formatTime(brief);
-                const dtEnd = আবদুল্লাহ + pad(d.getMonth() + 1) + pad(d.getDate()) + 'T' + formatTime(debrief);
+                const dtStart = yyyy + pad(d.getMonth() + 1) + pad(d.getDate()) + 'T' + formatTime(brief);
+                const dtEnd = yyyy + pad(d.getMonth() + 1) + pad(d.getDate()) + 'T' + formatTime(debrief);
 
                 events.push(`BEGIN:VEVENT\nSUMMARY:${duty} ${brief} ${details}\nDTSTART;TZID=Australia/Brisbane:${dtStart}\nDTEND;TZID=Australia/Brisbane:${dtEnd}\nDESCRIPTION:Brief: ${brief} | ${details}\nUID:roster-${dtStart}@roster.local\nDTSTAMP:${dtStart}Z\nEND:VEVENT`);
                 buffer = [];
@@ -609,10 +620,10 @@
                 const initialSplit = buffer[0].split(/\t| {2,}/);
                 for (let i = 0; i < initialSplit.length && i < 5; i++) rowData[i] = initialSplit[i];
 
-                const [dayStr, monStr, আবদুল্লাহ] = rowData[0].split(/[\/\s]/);
+                const [dayStr, monStr, yyyy] = rowData[0].split(/[\/\s]/);
                 let currentYear = new Date().getFullYear();
-                if ( আবদুল্লাহ && !isNaN(Number( আবদুল্লাহ ))) {
-                     currentYear = Number( আবদুল্লাহ );
+                if (yyyy && !isNaN(Number(yyyy))) {
+                     currentYear = Number(yyyy);
                 }
 
                 const months = {
@@ -900,11 +911,11 @@
 
         // New functions for the modal/popover
         function showBreachInfoModal() {
-            document.getElementById('breachInfoModal').style.display = 'flex';
+            breachInfoModal.style.display = 'flex'; // Use flex to center
         }
 
         function hideBreachInfoModal() {
-            document.getElementById('breachInfoModal').style.display = 'none';
+            breachInfoModal.style.display = 'none';
         }
 
         function generatePrintout() {
@@ -939,10 +950,10 @@
                 const start = buffer[0].split(/\t| {2,}/);
                 for (let i = 0; i < start.length && i < 5; i++) row[i] = start[i];
 
-                const [dd, mon, আবদুল্লাহ] = row[0].split(/[\/\s]/);
+                const [dd, mon, yyyy] = row[0].split(/[\/\s]/);
                 let currentYear = new Date().getFullYear();
-                if ( আবদুল্লাহ && !isNaN(Number( আবদুল্লাহ ))) {
-                    currentYear = Number( আবদুল্লাহ );
+                if (yyyy && !isNaN(Number(yyyy))) {
+                    currentYear = Number(yyyy);
                 }
                 const months = {
                     Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5,
