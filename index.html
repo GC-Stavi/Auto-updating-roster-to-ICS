@@ -240,9 +240,11 @@
         <textarea id="rosterInput" placeholder="Paste your roster here..."></textarea><br/>
         <button onclick="generatePrintout()">Print This Page</button>
         <button onclick="generateICS()">Download ICS File</button>
-        <button onclick="checkForBreaches()">Check for Roster Breaches</button> <div id="breachResults"> <h3>Roster Breach Check Results:</h3>
+        <button onclick="checkForBreaches()">Check for Roster Breaches</button>
+        <div id="breachResults">
+            <h3>Roster Breach Check Results:</h3>
             <ul id="breachList">
-                </ul>
+            </ul>
         </div>
 
         <table id="printTable">
@@ -290,7 +292,7 @@
         function cleanHeaderLines(lines) {
             const knownHeaders = [
                 'Duty Date\tDuty\tBrief Time\tDebrief Time\tLayover\tDetails\tDuty hours\tFlight hours\tPax Hours\tCredit Hours',
-                'Duty	Date	Duty	Brief	Time	Debrief	Time	Layover'
+                'Duty\tDate\tDuty\tBrief\tTime\tDebrief\tTime\tLayover'
             ];
             return lines.filter(line =>
                 !knownHeaders.some(h =>
@@ -449,7 +451,6 @@
             breachList.innerHTML = '';
             const breachesFound = [];
 
-            // Helper to add breach messages
             function addBreach(message) {
                 breachesFound.push(message);
                 const li = document.createElement('li');
@@ -457,16 +458,15 @@
                 breachList.appendChild(li);
             }
 
-            // --- Implement ONLY Early Starts Breach Check (Consolidated Output) ---
+            // --- Implement ONLY Early Starts Breach Check (Consecutive Days with Breach) ---
 
-            const earlyStartsThreshold = 3;
-            const sevenDaysInMs = 7 * 24 * 60 * 60 * 1000;
+            const earlyStartsThreshold = 3; // Max allowed is 3, so > 3 is a breach
             const SIX_AM_IN_MINUTES = parseTime('06:00');
 
-            // This set will store the "end date strings" of periods for which a breach has already been reported
-            // to avoid duplicate messages for consecutive days within the same breaching period.
-            const reportedBreachWindows = new Set();
+            let consecutiveEarlyStarts = 0;
+            let breachStartDate = null;
 
+            // Iterate through the roster to find consecutive early starts
             for (let i = 0; i < roster.length; i++) {
                 const currentEntry = roster[i];
                 const currentBriefTimeMinutes = parseTime(currentEntry.briefTime);
@@ -480,44 +480,26 @@
                 );
 
                 if (isActualDutyStartCandidate && currentBriefTimeMinutes < SIX_AM_IN_MINUTES) {
-                    let earlyStartsInWindow = 0;
-                    const windowStartTime = new Date(currentEntry.date.getTime() - sevenDaysInMs);
-                    let violatingDatesForWindow = []; // To list dates for the current window's breach
-
-                    for (let j = 0; j <= i; j++) {
-                        const checkEntry = roster[j];
-                        const checkBriefTimeMinutes = parseTime(checkEntry.briefTime);
-
-                        const checkIsActualDutyStartCandidate = !(
-                            checkEntry.dutyType.toUpperCase().includes('RDO') ||
-                            checkEntry.dutyType.toUpperCase().includes('GREY DAY') ||
-                            checkEntry.dutyType.toUpperCase().includes('SBY') ||
-                            checkEntry.dutyType.toUpperCase().includes('LEAVE') ||
-                            isNaN(checkBriefTimeMinutes)
-                        );
-
-                        if (checkEntry.date.getTime() >= windowStartTime.getTime() &&
-                            checkEntry.date.getTime() <= currentEntry.date.getTime() &&
-                            checkIsActualDutyStartCandidate &&
-                            checkBriefTimeMinutes < SIX_AM_IN_MINUTES) {
-                            earlyStartsInWindow++;
-                            violatingDatesForWindow.push(`${checkEntry.dateString} (${checkEntry.briefTime})`);
-                        }
+                    // This is an early start duty
+                    consecutiveEarlyStarts++;
+                    if (breachStartDate === null) {
+                        breachStartDate = currentEntry.dateString;
                     }
-
-                    if (earlyStartsInWindow > earlyStartsThreshold) {
-                        // Create a unique key for this breach window to prevent duplicate reports
-                        // We'll use the start and end dates of the 7-day window.
-                        const windowKey = `${windowStartTime.toDateString()}-${currentEntry.date.toDateString()}`;
-
-                        if (!reportedBreachWindows.has(windowKey)) {
-                            reportedBreachWindows.add(windowKey); // Mark this window as reported
-
-                            const abbreviatedViolatingDates = violatingDatesForWindow.join(', ');
-                            addBreach(`Early Starts Breach: Detected ${earlyStartsInWindow} starts before 06:00 in the 7-day period (from ${windowStartTime.toLocaleDateString('en-AU')} to ${currentEntry.date.toLocaleDateString('en-AU')}). Max allowed is ${earlyStartsThreshold}. Violating duties: ${abbreviatedViolatingDates}.`);
-                        }
+                } else {
+                    // Not an early start duty, check if a breach ended
+                    if (consecutiveEarlyStarts > earlyStartsThreshold) {
+                        // Breach occurred for a consecutive block of days
+                        addBreach(`Early Starts Breach: Started on ${breachStartDate}, with ${consecutiveEarlyStarts} consecutive duties starting before 06:00 (more than ${earlyStartsThreshold} allowed).`);
                     }
+                    // Reset for next sequence
+                    consecutiveEarlyStarts = 0;
+                    breachStartDate = null;
                 }
+            }
+
+            // After the loop, check if there's an ongoing breach at the end of the roster
+            if (consecutiveEarlyStarts > earlyStartsThreshold) {
+                addBreach(`Early Starts Breach: Started on ${breachStartDate}, with ${consecutiveEarlyStarts} consecutive duties starting before 06:00 (more than ${earlyStartsThreshold} allowed).`);
             }
 
 
