@@ -495,24 +495,17 @@
             }
 
             // --- Minimum RDOs Check ---
-            const RDO_MINIMUM = 8; // Minimum RDOs required per roster period 
-            const ROSTER_PERIOD_DAYS = 28; // A Roster Period is 28 days 
-
-            // To calculate RDOs, we need to determine the start and end of the roster period
-            // and then count RDOs within it. Assuming the roster data provided is for *one* roster period.
-            // If it can span multiple partial roster periods, this logic would need to be adjusted.
+            const RDO_MINIMUM = 8; // Minimum RDOs required per roster period
+            const ROSTER_PERIOD_DAYS = 28; // A Roster Period is 28 days
 
             if (roster.length > 0) {
                 const firstDate = roster[0].date;
                 const lastDate = roster[roster.length - 1].date;
 
-                // Check if the roster roughly covers a 28-day period for this check to be relevant
                 const rosterDurationMs = lastDate.getTime() - firstDate.getTime();
-                const rosterDurationDays = rosterDurationMs / (1000 * 60 * 60 * 24);
+                const rosterDurationDays = Math.round(rosterDurationMs / (1000 * 60 * 60 * 24)) + 1; // +1 to include both start and end day
 
-                // We'll consider a roster valid for this check if it's close to 28 days
-                // This might need adjustment if users paste shorter/longer roster segments
-                if (rosterDurationDays >= 27 && rosterDurationDays <= 29) { // Allowing for slight variations
+                if (rosterDurationDays >= (ROSTER_PERIOD_DAYS - 1) && rosterDurationDays <= (ROSTER_PERIOD_DAYS + 1)) { // Allowing for +/- 1 day variation
                     let rdoCount = 0;
                     for (const entry of roster) {
                         if (entry.dutyType.toUpperCase().includes('RDO')) {
@@ -521,14 +514,48 @@
                     }
 
                     if (rdoCount < RDO_MINIMUM) {
-                        addBreach(`RDO Breach: Only ${rdoCount} RDOs rostered in the period from ${firstDate.toLocaleDateString('en-AU')} to ${lastDate.toLocaleDateString('en-AU')}. A minimum of ${RDO_MINIMUM} RDOs are required.`);
+                        addBreach(`RDO Breach: Only ${rdoCount} RDOs rostered in the ${rosterDurationDays}-day period from ${firstDate.toLocaleDateString('en-AU')} to ${lastDate.toLocaleDateString('en-AU')}. A minimum of ${RDO_MINIMUM} RDOs are required.`);
                     }
                 } else {
-                    // Optionally, you can add a message if the roster length isn't typical for an RDO check
-                    // addBreach(`Note: RDO count check skipped as the roster duration (${Math.round(rosterDurationDays)} days) does not appear to be a standard 28-day roster period.`);
+                     // If you want a message when the roster is not a standard 28 days for the RDO check:
+                     // addBreach(`Note: RDO count check skipped as the roster duration (${rosterDurationDays} days) is not a standard 28-day roster period. Please paste a full 28-day roster for accurate RDO checks.`);
                 }
             }
 
+            // --- One Weekend Off Check ---
+            let hasWeekendOff = false;
+            if (roster.length > 0) {
+                // To be a "weekend off", it must be a Saturday RDO followed by a Sunday RDO.
+                for (let i = 0; i < roster.length - 1; i++) {
+                    const currentEntry = roster[i];
+                    const nextEntry = roster[i + 1];
+
+                    const currentDayOfWeek = currentEntry.date.getDay(); // 0 for Sunday, 6 for Saturday
+                    const nextDayOfWeek = nextEntry.date.getDay();
+
+                    // Check if current day is Saturday AND next day is Sunday
+                    if (currentDayOfWeek === 6 && nextDayOfWeek === 0) { // Saturday (6), Sunday (0)
+                        // Check if both are RDOs
+                        if (currentEntry.dutyType.toUpperCase().includes('RDO') &&
+                            nextEntry.dutyType.toUpperCase().includes('RDO')) {
+                            hasWeekendOff = true;
+                            break; // Found one, no need to check further
+                        }
+                    }
+                }
+
+                if (!hasWeekendOff) {
+                    // Only report if the roster duration is typical for a full roster period check
+                    const firstDate = roster[0].date;
+                    const lastDate = roster[roster.length - 1].date;
+                    const rosterDurationMs = lastDate.getTime() - firstDate.getTime();
+                    const rosterDurationDays = Math.round(rosterDurationMs / (1000 * 60 * 60 * 24)) + 1;
+
+                    if (rosterDurationDays >= (ROSTER_PERIOD_DAYS - 1) && rosterDurationDays <= (ROSTER_PERIOD_DAYS + 1)) {
+                        addBreach(`Weekend Off Breach: No full weekend (Saturday and Sunday as RDOs) found in the roster period.`);
+                    }
+                }
+            }
 
             // Display overall result
             if (breachesFound.length === 0) {
