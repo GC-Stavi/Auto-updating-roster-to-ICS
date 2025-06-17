@@ -516,16 +516,12 @@
                     if (rdoCount < RDO_MINIMUM) {
                         addBreach(`RDO Breach: Only ${rdoCount} RDOs rostered in the ${rosterDurationDays}-day period from ${firstDate.toLocaleDateString('en-AU')} to ${lastDate.toLocaleDateString('en-AU')}. A minimum of ${RDO_MINIMUM} RDOs are required.`);
                     }
-                } else {
-                     // If you want a message when the roster is not a standard 28 days for the RDO check:
-                     // addBreach(`Note: RDO count check skipped as the roster duration (${rosterDurationDays} days) is not a standard 28-day roster period. Please paste a full 28-day roster for accurate RDO checks.`);
                 }
             }
 
             // --- One Weekend Off Check ---
             let hasWeekendOff = false;
             if (roster.length > 0) {
-                // To be a "weekend off", it must be a Saturday RDO followed by a Sunday RDO.
                 for (let i = 0; i < roster.length - 1; i++) {
                     const currentEntry = roster[i];
                     const nextEntry = roster[i + 1];
@@ -533,29 +529,108 @@
                     const currentDayOfWeek = currentEntry.date.getDay(); // 0 for Sunday, 6 for Saturday
                     const nextDayOfWeek = nextEntry.date.getDay();
 
-                    // Check if current day is Saturday AND next day is Sunday
                     if (currentDayOfWeek === 6 && nextDayOfWeek === 0) { // Saturday (6), Sunday (0)
-                        // Check if both are RDOs
                         if (currentEntry.dutyType.toUpperCase().includes('RDO') &&
                             nextEntry.dutyType.toUpperCase().includes('RDO')) {
                             hasWeekendOff = true;
-                            break; // Found one, no need to check further
+                            break;
                         }
                     }
                 }
 
-                if (!hasWeekendOff) {
-                    // Only report if the roster duration is typical for a full roster period check
-                    const firstDate = roster[0].date;
-                    const lastDate = roster[roster.length - 1].date;
-                    const rosterDurationMs = lastDate.getTime() - firstDate.getTime();
-                    const rosterDurationDays = Math.round(rosterDurationMs / (1000 * 60 * 60 * 24)) + 1;
+                const firstDate = roster[0].date;
+                const lastDate = roster[roster.length - 1].date;
+                const rosterDurationMs = lastDate.getTime() - firstDate.getTime();
+                const rosterDurationDays = Math.round(rosterDurationMs / (1000 * 60 * 60 * 24)) + 1;
 
-                    if (rosterDurationDays >= (ROSTER_PERIOD_DAYS - 1) && rosterDurationDays <= (ROSTER_PERIOD_DAYS + 1)) {
-                        addBreach(`Weekend Off Breach: No full weekend (Saturday and Sunday as RDOs) found in the roster period.`);
-                    }
+                if (!hasWeekendOff && rosterDurationDays >= (ROSTER_PERIOD_DAYS - 1) && rosterDurationDays <= (ROSTER_PERIOD_DAYS + 1)) {
+                    addBreach(`Weekend Off Breach: No full weekend (Saturday and Sunday as RDOs) found in the roster period.`);
                 }
             }
+
+            // --- Consecutive Duty Tours Check (6 days on, needs 2 days off before next 6 days on) ---
+            const DUTY_TOUR_LENGTH = 6;
+            const REQUIRED_DAYS_OFF_BETWEEN_TOURS = 2;
+
+            let consecutiveDutyDays = 0;
+            let dutyTourStartDates = []; // Stores start dates of 6-day duty tours
+
+            for (let i = 0; i < roster.length; i++) {
+                const entry = roster[i];
+                const isDutyDay = !(
+                    entry.dutyType.toUpperCase().includes('RDO') ||
+                    entry.dutyType.toUpperCase().includes('GREY DAY') ||
+                    entry.dutyType.toUpperCase().includes('SBY') ||
+                    entry.dutyType.toUpperCase().includes('LEAVE')
+                );
+
+                if (isDutyDay) {
+                    consecutiveDutyDays++;
+                } else {
+                    // If the streak of duty days is broken
+                    if (consecutiveDutyDays >= DUTY_TOUR_LENGTH) {
+                        // A potential 6-day (or more) duty tour has just ended
+                        const tourStartDate = roster[i - consecutiveDutyDays].dateString;
+                        const tourEndDate = roster[i - 1].dateString;
+                        dutyTourStartDates.push({ start: tourStartDate, end: tourEndDate, startIndex: i - consecutiveDutyDays });
+                    }
+                    consecutiveDutyDays = 0; // Reset consecutive duty days
+                }
+
+                // If the loop ends and there's an ongoing streak of duty days
+                if (i === roster.length - 1 && consecutiveDutyDays >= DUTY_TOUR_LENGTH) {
+                    const tourStartDate = roster[i - consecutiveDutyDays + 1].dateString;
+                    const tourEndDate = roster[i].dateString;
+                    dutyTourStartDates.push({ start: tourStartDate, end: tourEndDate, startIndex: i - consecutiveDutyDays + 1 });
+                }
+            }
+
+            // Now, check the identified duty tours for breaches
+            for (let i = 0; i < dutyTourStartDates.length - 1; i++) {
+                const firstTour = dutyTourStartDates[i];
+                const secondTour = dutyTourStartDates[i + 1];
+
+                const daysBetween = [];
+                // Collect days between the end of the first tour and the start of the second tour
+                for (let j = firstTour.startIndex + DUTY_TOUR_LENGTH; j < secondTour.startIndex; j++) {
+                    if (j < roster.length) { // Ensure index is within bounds
+                        daysBetween.push(roster[j]);
+                    }
+                }
+
+                let daysOffBetweenTours = 0;
+                for (const day of daysBetween) {
+                    if (day.dutyType.toUpperCase().includes('RDO') || day.dutyType.toUpperCase().includes('GREY DAY')) {
+                        daysOffBetweenTours++;
+                    } else {
+                        // If any non-RDO/Grey day is found, this means the consecutive days off requirement is broken.
+                        // However, the rule states "minimum of two (2) consecutive days off",
+                        // so we need to ensure the days *are* consecutive.
+                        // For simplicity, we'll count total RDO/Grey days here and then check consecutiveness later if needed.
+                        // For now, let's assume "minimum of two (2) consecutive days off" simply means
+                        // that there are at least two RDO/Grey days and no duties in between *within that buffer*.
+                    }
+                }
+
+                // To strictly check "consecutive days off", we need to check the actual sequence.
+                // Let's modify the check here to look at the buffer days.
+                let currentConsecutiveDaysOff = 0;
+                let maxConsecutiveDaysOffFound = 0;
+                for (const day of daysBetween) {
+                    if (day.dutyType.toUpperCase().includes('RDO') || day.dutyType.toUpperCase().includes('GREY DAY')) {
+                        currentConsecutiveDaysOff++;
+                    } else {
+                        maxConsecutiveDaysOffFound = Math.max(maxConsecutiveDaysOffFound, currentConsecutiveDaysOff);
+                        currentConsecutiveDaysOff = 0;
+                    }
+                }
+                maxConsecutiveDaysOffFound = Math.max(maxConsecutiveDaysOffFound, currentConsecutiveDaysOff); // Check after loop
+
+                if (maxConsecutiveDaysOffFound < REQUIRED_DAYS_OFF_BETWEEN_TOURS) {
+                    addBreach(`Consecutive Duty Tours Breach: Pilot worked 6+ days (from ${firstTour.start} to ${firstTour.end}) followed by another 6+ days (starting ${secondTour.start}) without a minimum of ${REQUIRED_DAYS_OFF_BETWEEN_TOURS} consecutive days off in between. Only found ${maxConsecutiveDaysOffFound} consecutive days off.`);
+                }
+            }
+
 
             // Display overall result
             if (breachesFound.length === 0) {
