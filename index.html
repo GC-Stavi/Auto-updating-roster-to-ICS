@@ -1,395 +1,732 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Roster to ICS Exporter</title>
-  <style>
-    * { box-sizing: border-box; }
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Roster to ICS Exporter</title>
+    <style>
+        /* Your existing CSS */
+        * { box-sizing: border-box; }
 
-    body {
-      font-family: sans-serif;
-      margin: 1em;
-      background: #f8f8f8;
-      overflow-x: hidden;
-      position: relative;
-    }
+        body {
+            font-family: sans-serif;
+            margin: 1em;
+            background: #f8f8f8;
+            overflow-x: hidden;
+            position: relative;
+        }
 
-    .logo {
-      text-align: center;
-      margin-bottom: 10px;
-    }
+        .logo {
+            text-align: center;
+            margin-bottom: 10px;
+        }
 
-    .logo img {
-      max-width: 180px;
-      height: auto;
-      margin-top: 10px;
-      margin-bottom: 10px;
-      box-shadow: 0 0 8px rgba(0,0,0,0.05);
-    }
+        .logo img {
+            max-width: 180px;
+            height: auto;
+            margin-top: 10px;
+            margin-bottom: 10px;
+            box-shadow: 0 0 8px rgba(0,0,0,0.05);
+        }
 
-    .top-controls {
-      position: absolute;
-      top: 20px;
-      right: 20px;
-    }
+        .top-controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+        }
 
-    .dark-toggle-btn {
-      padding: 0.6em 1em;
-      font-size: 1em;
-      font-weight: bold;
-      border: 1px solid #ccc;
-      background: #eee;
-      cursor: pointer;
-      border-radius: 6px;
-    }
+        .dark-toggle-btn {
+            padding: 0.6em 1em;
+            font-size: 1em;
+            font-weight: bold;
+            border: 1px solid #ccc;
+            background: #eee;
+            cursor: pointer;
+            border-radius: 6px;
+        }
 
-    hr.divider {
-      max-width: 200px;
-      margin: 0 auto 20px auto;
-      border: 0;
-      border-top: 1px solid #ccc;
-    }
+        hr.divider {
+            max-width: 200px;
+            margin: 0 auto 20px auto;
+            border: 0;
+            border-top: 1px solid #ccc;
+        }
 
-    .container {
-      max-width: 1000px;
-      margin: auto;
-      background: #fff;
-      padding: 1em;
-      box-shadow: 0 0 10px #ccc;
-      border-radius: 8px;
-    }
+        .container {
+            max-width: 1000px;
+            margin: auto;
+            background: #fff;
+            padding: 1em;
+            box-shadow: 0 0 10px #ccc;
+            border-radius: 8px;
+        }
 
-    textarea {
-      width: 100%;
-      height: 350px;
-      max-width: 100%;
-      display: block;
-      font-family: monospace;
-      padding: 1em;
-      border: 1px solid #ccc;
-      resize: vertical;
-      font-size: 14px;
-      line-height: 1.5;
-    }
+        textarea {
+            width: 100%;
+            height: 350px;
+            max-width: 100%;
+            display: block;
+            font-family: monospace;
+            padding: 1em;
+            border: 1px solid #ccc;
+            resize: vertical;
+            font-size: 14px;
+            line-height: 1.5;
+        }
 
-    button {
-      margin: 0.5em 0.5em 0 0;
-      padding: 0.6em 1.2em;
-      font-size: 1em;
-      cursor: pointer;
-    }
+        button {
+            margin: 0.5em 0.5em 0 0;
+            padding: 0.6em 1.2em;
+            font-size: 1em;
+            cursor: pointer;
+            border-radius: 6px; /* Added for consistency */
+            border: 1px solid #ccc; /* Added for consistency */
+            background: #eee; /* Added for consistency */
+        }
 
-    table#printTable {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 1em;
-      display: none;
-    }
+        button:hover {
+            background-color: #e0e0e0; /* Added hover effect */
+        }
 
-    table#printTable, table#printTable th, table#printTable td {
-      border: 1px solid #333;
-    }
+        table#printTable {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1em;
+            display: none;
+        }
 
-    table#printTable th, table#printTable td {
-      padding: 2px 4px;
-      font-size: 9pt;
-      text-align: left;
-      vertical-align: top;
-      white-space: pre-wrap;
-    }
+        table#printTable, table#printTable th, table#printTable td {
+            border: 1px solid #333;
+        }
 
-    .weekend-row {
-      background-color: #e0e0e0 !important;
-    }
+        table#printTable th, table#printTable td {
+            padding: 2px 4px;
+            font-size: 9pt;
+            text-align: left;
+            vertical-align: top;
+            white-space: pre-wrap;
+        }
 
-    @media print {
-      .logo, .top-controls, textarea, button, hr.divider {
-        display: none !important;
-      }
+        .weekend-row {
+            background-color: #e0e0e0 !important;
+        }
 
-      body {
-        background: white;
-        margin: 0;
-      }
+        #breachResults {
+            margin-top: 1em;
+            padding: 1em;
+            border: 1px solid #ddd;
+            background-color: #f9f9f9;
+            border-radius: 5px;
+            max-height: 200px; /* Limit height for scroll if many breaches */
+            overflow-y: auto; /* Enable scrolling if content exceeds max-height */
+            display: none; /* Hidden by default, shown when results are available */
+        }
 
-      .container {
-        box-shadow: none;
-        padding: 0;
-        max-width: 100%;
-      }
+        #breachResults h3 {
+            margin-top: 0;
+            color: #333;
+        }
 
-      table#printTable {
-        display: table;
-      }
+        #breachResults ul {
+            list-style-type: none;
+            padding: 0;
+        }
 
-      .weekend-row {
-        -webkit-print-color-adjust: exact;
-        print-color-adjust: exact;
-        background-color: #e0e0e0 !important;
-      }
-    }
+        #breachResults li {
+            margin-bottom: 0.5em;
+            font-weight: bold;
+            color: #d9534f; /* Red for breaches */
+        }
 
-    body.dark-mode {
-      background: #121212;
-      color: #f0f0f0;
-    }
+        #breachResults li.no-breach {
+            color: #5cb85c; /* Green for no breaches */
+        }
 
-    body.dark-mode .container {
-      background: #1e1e1e;
-      box-shadow: 0 0 10px #000;
-    }
+        @media print {
+            .logo, .top-controls, textarea, button, hr.divider, #breachResults {
+                display: none !important;
+            }
 
-    body.dark-mode textarea {
-      background: #2a2a2a;
-      color: #f0f0f0;
-      border: 1px solid #555;
-    }
+            body {
+                background: white;
+                margin: 0;
+            }
 
-    body.dark-mode button,
-    body.dark-mode .dark-toggle-btn {
-      background: #333;
-      color: #fff;
-      border: 1px solid #555;
-    }
+            .container {
+                box-shadow: none;
+                padding: 0;
+                max-width: 100%;
+            }
 
-    body.dark-mode table#printTable {
-      background: #1e1e1e;
-      color: #f0f0f0;
-    }
+            table#printTable {
+                display: table;
+            }
 
-    body.dark-mode table#printTable th,
-    body.dark-mode table#printTable td {
-      border-color: #555;
-    }
+            .weekend-row {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+                background-color: #e0e0e0 !important;
+            }
+        }
 
-    body.dark-mode .weekend-row {
-      background-color: #2f2f2f !important;
-    }
-  </style>
+        /* Dark mode styles */
+        body.dark-mode {
+            background: #121212;
+            color: #f0f0f0;
+        }
+
+        body.dark-mode .container {
+            background: #1e1e1e;
+            box-shadow: 0 0 10px #000;
+        }
+
+        body.dark-mode textarea {
+            background: #2a2a2a;
+            color: #f0f0f0;
+            border: 1px solid #555;
+        }
+
+        body.dark-mode button,
+        body.dark-mode .dark-toggle-btn {
+            background: #333;
+            color: #fff;
+            border: 1px solid #555;
+        }
+
+        body.dark-mode button:hover {
+            background-color: #555;
+        }
+
+        body.dark-mode table#printTable {
+            background: #1e1e1e;
+            color: #f0f0f0;
+        }
+
+        body.dark-mode table#printTable th,
+        body.dark-mode table#printTable td {
+            border-color: #555;
+        }
+
+        body.dark-mode .weekend-row {
+            background-color: #2f2f2f !important;
+        }
+
+        body.dark-mode #breachResults {
+            background-color: #2a2a2a;
+            border-color: #555;
+        }
+
+        body.dark-mode #breachResults h3 {
+            color: #f0f0f0;
+        }
+
+        body.dark-mode #breachResults li {
+            color: #ff9999; /* Lighter red for dark mode breaches */
+        }
+    </style>
 </head>
 <body>
-  <div class="logo">
-    <img src="alliance-logo.png" alt="Alliance Airlines Logo">
-  </div>
-  <hr class="divider">
+    <div class="logo">
+        <img src="alliance-logo.png" alt="Alliance Airlines Logo">
+    </div>
+    <hr class="divider">
 
-  <div class="top-controls">
-    <button class="dark-toggle-btn" onclick="toggleDarkMode()" id="darkModeBtn">Switch to Dark Mode</button>
-  </div>
+    <div class="top-controls">
+        <button class="dark-toggle-btn" onclick="toggleDarkMode()" id="darkModeBtn">Switch to Dark Mode</button>
+    </div>
 
-  <div class="container">
-    <textarea id="rosterInput" placeholder="Paste your roster here..."></textarea><br/>
-    <button onclick="generatePrintout()">Print This Page</button>
-    <button onclick="generateICS()">Download ICS File</button>
+    <div class="container">
+        <textarea id="rosterInput" placeholder="Paste your roster here..."></textarea><br/>
+        <button onclick="generatePrintout()">Print This Page</button>
+        <button onclick="generateICS()">Download ICS File</button>
+        <button onclick="checkForBreaches()">Check for Roster Breaches</button> <div id="breachResults">
+            <h3>Roster Breach Check Results:</h3>
+            <ul id="breachList">
+                </ul>
+        </div>
 
-    <table id="printTable">
-      <thead>
-        <tr>
-          <th>Duty Date</th>
-          <th>Duty</th>
-          <th>Brief</th>
-          <th>Debrief</th>
-          <th>Layover</th>
-          <th>Details</th>
-          <th>Duty</th>
-          <th>Flight</th>
-          <th>Pax</th>
-          <th>Credit</th>
-        </tr>
-      </thead>
-      <tbody id="printTableBody"></tbody>
-    </table>
-  </div>
+        <table id="printTable">
+            <thead>
+                <tr>
+                    <th>Duty Date</th>
+                    <th>Duty</th>
+                    <th>Brief</th>
+                    <th>Debrief</th>
+                    <th>Layover</th>
+                    <th>Details</th>
+                    <th>Duty</th>
+                    <th>Flight</th>
+                    <th>Pax</th>
+                    <th>Credit</th>
+                </tr>
+            </thead>
+            <tbody id="printTableBody"></tbody>
+        </table>
+    </div>
 
-  <script>
-    function toggleDarkMode() {
-      const body = document.body;
-      const btn = document.getElementById('darkModeBtn');
-      const isDark = body.classList.toggle('dark-mode');
-      btn.textContent = isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode';
-      localStorage.setItem('darkMode', isDark ? 'dark' : 'light');
-    }
-
-    window.onload = function () {
-      const saved = localStorage.getItem('darkMode');
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      const shouldDark = saved === 'dark' || (!saved && prefersDark);
-      if (shouldDark) {
-        document.body.classList.add('dark-mode');
-        document.getElementById('darkModeBtn').textContent = 'Switch to Light Mode';
-      }
-    };
-
-    function pad(n) {
-      return n.toString().padStart(2, '0');
-    }
-
-    function cleanHeaderLines(lines) {
-      const knownHeaders = [
-        'Duty Date\tDuty\tBrief Time\tDebrief Time\tLayover\tDetails\tDuty hours\tFlight hours\tPax Hours\tCredit Hours',
-        'Duty\tDate\tDuty\tBrief\tTime\tDebrief\tTime\tLayover'
-      ];
-      return lines.filter(line =>
-        !knownHeaders.some(h =>
-          line.replace(/\s+/g, '').includes(h.replace(/\s+/g, ''))
-        )
-      );
-    }
-
-    function generateICS() {
-      let lines = document.getElementById('rosterInput').value.trim().split('\n');
-      if (!lines.length) return alert("Paste your roster first.");
-      lines = cleanHeaderLines(lines);
-
-      const newBlockRegex = /^\d{2}\/\w{3}\/\d{4}[ \t]/;
-      const timeSummaryRegex = /^\d{1,2}:\d{2}[ \t]+\d{1,2}:\d{2}[ \t]+\d{1,2}:\d{2}[ \t]+\d{1,2}:\d{2}$/;
-      let buffer = [], events = [];
-
-      function flushRow() {
-        if (!buffer.length) return;
-        const row = Array(10).fill('');
-        const start = buffer[0].split(/\t| {2,}/);
-        for (let i = 0; i < start.length && i < 5; i++) row[i] = start[i];
-
-        const summaryIndex = buffer.findIndex(l => timeSummaryRegex.test(l));
-        let summary = [];
-        if (summaryIndex !== -1) {
-          summary = buffer[summaryIndex].split(/\t| {2,}/);
-          buffer.splice(summaryIndex, 1);
+    <script>
+        function toggleDarkMode() {
+            const body = document.body;
+            const btn = document.getElementById('darkModeBtn');
+            const isDark = body.classList.toggle('dark-mode');
+            btn.textContent = isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode';
+            localStorage.setItem('darkMode', isDark ? 'dark' : 'light');
         }
 
-        row[5] = buffer.slice(1).join('\n');
-        for (let i = 0; i < summary.length; i++) row[6 + i] = summary[i];
-
-        const [dd, mon, yyyy] = row[0].split(/[\/\s]/);
-        const months = {
-          Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5,
-          Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11
+        window.onload = function () {
+            const saved = localStorage.getItem('darkMode');
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            const shouldDark = saved === 'dark' || (!saved && prefersDark);
+            if (shouldDark) {
+                document.body.classList.add('dark-mode');
+                document.getElementById('darkModeBtn').textContent = 'Switch to Light Mode';
+            }
         };
-        const d = new Date(yyyy, months[mon], dd);
 
-        const brief = row[2] || '00:00';
-        const debrief = row[3] || '00:00';
-        const duty = row[1];
-        const details = row[5].replace(/\n/g, ' | ');
-        const formatTime = (t) => t.replace(/:/g, '') + '00';
-
-        const dtStart = yyyy + pad(d.getMonth() + 1) + pad(d.getDate()) + 'T' + formatTime(brief);
-        const dtEnd = yyyy + pad(d.getMonth() + 1) + pad(d.getDate()) + 'T' + formatTime(debrief);
-
-        events.push(`BEGIN:VEVENT\nSUMMARY:${duty} ${brief} ${details}\nDTSTART;TZID=Australia/Brisbane:${dtStart}\nDTEND;TZID=Australia/Brisbane:${dtEnd}\nDESCRIPTION:Brief: ${brief} | ${details}\nUID:roster-${dtStart}@roster.local\nDTSTAMP:${dtStart}Z\nEND:VEVENT`);
-        buffer = [];
-      }
-
-      lines.forEach(line => {
-        if (newBlockRegex.test(line)) flushRow();
-        buffer.push(line);
-      });
-      flushRow();
-
-      const ics = `BEGIN:VCALENDAR\nVERSION:2.0\nCALSCALE:GREGORIAN\nMETHOD:PUBLISH\nX-WR-TIMEZONE:Australia/Brisbane\nBEGIN:VTIMEZONE\nTZID:Australia/Brisbane\nBEGIN:STANDARD\nDTSTART:19700101T000000\nTZOFFSETFROM:+1000\nTZOFFSETTO:+1000\nTZNAME:AEST\nEND:STANDARD\nEND:VTIMEZONE\n${events.join('\n')}\nEND:VCALENDAR`;
-
-      const blob = new Blob([ics.replace(/\n/g, "\r\n")], { type: 'text/calendar' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'roster_export.ics';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-    }
-
-    function generatePrintout() {
-      let lines = document.getElementById('rosterInput').value.trim().split('\n');
-      if (!lines.length) return alert("Paste your roster first.");
-      lines = cleanHeaderLines(lines);
-
-      const tbody = document.getElementById('printTableBody');
-      const table = document.getElementById('printTable');
-      tbody.innerHTML = '';
-
-      const newBlockRegex = /^\d{2}\/\w{3}\/\d{4}[ \t]/;
-      const timeSummaryRegex = /^\d{1,2}:\d{2}[ \t]+\d{1,2}:\d{2}[ \t]+\d{1,2}:\d{2}[ \t]+\d{1,2}:\d{2}$/;
-      let buffer = [];
-      let totals = [0, 0, 0, 0];
-
-      function parseMinutes(time) {
-        const [h, m] = time.split(':').map(Number);
-        return h * 60 + m;
-      }
-
-      function formatMinutes(mins) {
-        const h = Math.floor(mins / 60);
-        const m = mins % 60;
-        return `${h}:${m.toString().padStart(2, '0')}`;
-      }
-
-      function flushRow() {
-        if (!buffer.length) return;
-
-        const row = Array(10).fill('');
-        const start = buffer[0].split(/\t| {2,}/);
-        for (let i = 0; i < start.length && i < 5; i++) row[i] = start[i];
-
-        const [dd, mon, yyyy] = row[0].split(/[\/\s]/);
-        const months = {
-          Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5,
-          Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11
-        };
-        const d = new Date(yyyy, months[mon], dd);
-        const dayOfWeek = d.toLocaleDateString('en-AU', { weekday: 'short' });
-        const fullDay = d.toLocaleDateString('en-AU', { weekday: 'long' });
-        row[0] = `${dayOfWeek} ${row[0]}`;
-        const isWeekend = (fullDay === 'Saturday' || fullDay === 'Sunday');
-
-        const summaryIndex = buffer.findIndex(l => timeSummaryRegex.test(l));
-        let summary = [];
-        if (summaryIndex !== -1) {
-          summary = buffer[summaryIndex].split(/\t| {2,}/);
-          buffer.splice(summaryIndex, 1);
+        function pad(n) {
+            return n.toString().padStart(2, '0');
         }
 
-        row[5] = buffer.slice(1).join('\n');
-        for (let i = 0; i < summary.length; i++) row[6 + i] = summary[i];
-
-        for (let i = 6; i <= 9; i++) {
-          if (row[i].match(/^\d{1,2}:\d{2}$/)) {
-            totals[i - 6] += parseMinutes(row[i]);
-          }
+        function cleanHeaderLines(lines) {
+            const knownHeaders = [
+                'Duty Date\tDuty\tBrief Time\tDebrief Time\tLayover\tDetails\tDuty hours\tFlight hours\tPax Hours\tCredit Hours',
+                'Duty\tDate\tDuty\tBrief\tTime\tDebrief\tTime\tLayover'
+            ];
+            return lines.filter(line =>
+                !knownHeaders.some(h =>
+                    line.replace(/\s+/g, '').includes(h.replace(/\s+/g, ''))
+                )
+            );
         }
 
-        const tr = document.createElement('tr');
-        if (isWeekend) tr.classList.add('weekend-row');
-        row.forEach(val => {
-          const td = document.createElement('td');
-          td.textContent = val;
-          tr.appendChild(td);
-        });
-        tbody.appendChild(tr);
-        buffer = [];
-      }
+        function generateICS() {
+            let lines = document.getElementById('rosterInput').value.trim().split('\n');
+            if (!lines.length) return alert("Paste your roster first.");
+            lines = cleanHeaderLines(lines);
 
-      lines.forEach(line => {
-        if (newBlockRegex.test(line)) flushRow();
-        buffer.push(line);
-      });
-      flushRow();
+            const newBlockRegex = /^\d{2}\/\w{3}\/\d{4}[ \t]/;
+            const timeSummaryRegex = /^\d{1,2}:\d{2}[ \t]+\d{1,2}:\d{2}[ \t]+\d{1,2}:\d{2}[ \t]+\d{1,2}:\d{2}$/;
+            let buffer = [], events = [];
 
-      const summaryRow = document.createElement('tr');
-      for (let i = 0; i < 10; i++) {
-        const td = document.createElement('td');
-        if (i === 0) td.textContent = 'TOTAL';
-        if (i >= 6) td.textContent = formatMinutes(totals[i - 6]);
-        summaryRow.appendChild(td);
-      }
-      summaryRow.style.fontWeight = 'bold';
-      summaryRow.style.borderTop = '2px solid #000';
-      tbody.appendChild(summaryRow);
+            function flushRow() {
+                if (!buffer.length) return;
+                const row = Array(10).fill('');
+                const start = buffer[0].split(/\t| {2,}/);
+                for (let i = 0; i < start.length && i < 5; i++) row[i] = start[i];
 
-      table.style.display = 'table';
-      window.print();
-    }
-  </script>
+                const summaryIndex = buffer.findIndex(l => timeSummaryRegex.test(l));
+                let summary = [];
+                if (summaryIndex !== -1) {
+                    summary = buffer[summaryIndex].split(/\t| {2,}/);
+                    buffer.splice(summaryIndex, 1);
+                }
+
+                row[5] = buffer.slice(1).join('\n');
+                for (let i = 0; i < summary.length; i++) row[6 + i] = summary[i];
+
+                const [dd, mon, yyyy] = row[0].split(/[\/\s]/);
+                const months = {
+                    Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5,
+                    Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11
+                };
+                const d = new Date(yyyy, months[mon], dd);
+
+                const brief = row[2] || '00:00';
+                const debrief = row[3] || '00:00';
+                const duty = row[1];
+                const details = row[5].replace(/\n/g, ' | ');
+                const formatTime = (t) => t.replace(/:/g, '') + '00';
+
+                const dtStart = yyyy + pad(d.getMonth() + 1) + pad(d.getDate()) + 'T' + formatTime(brief);
+                const dtEnd = yyyy + pad(d.getMonth() + 1) + pad(d.getDate()) + 'T' + formatTime(debrief);
+
+                events.push(`BEGIN:VEVENT\nSUMMARY:${duty} ${brief} ${details}\nDTSTART;TZID=Australia/Brisbane:${dtStart}\nDTEND;TZID=Australia/Brisbane:${dtEnd}\nDESCRIPTION:Brief: ${brief} | ${details}\nUID:roster-${dtStart}@roster.local\nDTSTAMP:${dtStart}Z\nEND:VEVENT`);
+                buffer = [];
+            }
+
+            lines.forEach(line => {
+                if (newBlockRegex.test(line)) flushRow();
+                buffer.push(line);
+            });
+            flushRow();
+
+            const ics = `BEGIN:VCALENDAR\nVERSION:2.0\nCALSCALE:GREGORIAN\nMETHOD:PUBLISH\nX-WR-TIMEZONE:Australia/Brisbane\nBEGIN:VTIMEZONE\nTZID:Australia/Brisbane\nBEGIN:STANDARD\nDTSTART:19700101T000000\nTZOFFSETFROM:+1000\nTZOFFSETTO:+1000\nTZNAME:AEST\nEND:STANDARD\nEND:VTIMEZONE\n${events.join('\n')}\nEND:VCALENDAR`;
+
+            const blob = new Blob([ics.replace(/\n/g, "\r\n")], { type: 'text/calendar' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'roster_export.ics';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        }
+
+        // --- Start of new breach checking functionality ---
+
+        function parseTime(timeStr) {
+            const [hours, minutes] = timeStr.split(':').map(Number);
+            return hours * 60 + minutes; // Return total minutes from midnight
+        }
+
+        function formatMinutesToHHMM(totalMinutes) {
+            const hours = Math.floor(totalMinutes / 60);
+            const minutes = totalMinutes % 60;
+            return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+        }
+
+        // Helper function to parse roster data into a structured format
+        function parseRosterData() {
+            let lines = document.getElementById('rosterInput').value.trim().split('\n');
+            if (!lines.length) {
+                alert("Please paste your roster first.");
+                return null;
+            }
+            lines = cleanHeaderLines(lines);
+
+            const newBlockRegex = /^\d{2}\/\w{3}\/\d{4}[ \t]/;
+            const timeSummaryRegex = /^\d{1,2}:\d{2}[ \t]+\d{1,2}:\d{2}[ \t]+\d{1,2}:\d{2}[ \t]+\d{1,2}:\d{2}$/;
+            let buffer = [];
+            const rosterEntries = [];
+
+            function processBuffer() {
+                if (!buffer.length) return;
+
+                const rowData = Array(10).fill('');
+                const initialSplit = buffer[0].split(/\t| {2,}/);
+                for (let i = 0; i < initialSplit.length && i < 5; i++) rowData[i] = initialSplit[i];
+
+                const [dayStr, monStr, yearStr] = rowData[0].split(/[\/\s]/);
+                const months = {
+                    Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5,
+                    Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11
+                };
+                const date = new Date(Number(yearStr), months[monStr], Number(dayStr));
+
+                const summaryIndex = buffer.findIndex(l => timeSummaryRegex.test(l));
+                let summaryParts = [];
+                if (summaryIndex !== -1) {
+                    summaryParts = buffer[summaryIndex].split(/\t| {2,}/);
+                    buffer.splice(summaryIndex, 1);
+                }
+
+                rowData[5] = buffer.slice(1).join('\n'); // Details
+                for (let i = 0; i < summaryParts.length; i++) rowData[6 + i] = summaryParts[i]; // Duty, Flight, Pax, Credit
+
+                rosterEntries.push({
+                    date: date,
+                    dateString: rowData[0],
+                    dutyType: rowData[1],
+                    briefTime: rowData[2],
+                    debriefTime: rowData[3],
+                    layover: rowData[4],
+                    details: rowData[5],
+                    dutyHours: rowData[6],
+                    flightHours: rowData[7],
+                    paxHours: rowData[8],
+                    creditHours: rowData[9]
+                });
+                buffer = [];
+            }
+
+            lines.forEach(line => {
+                if (newBlockRegex.test(line) && buffer.length > 0) {
+                    processBuffer();
+                }
+                buffer.push(line);
+            });
+            processBuffer(); // Process the last buffer
+
+            return rosterEntries;
+        }
+
+
+        function checkForBreaches() {
+            const roster = parseRosterData();
+            if (!roster) {
+                document.getElementById('breachResults').style.display = 'none';
+                return;
+            }
+
+            const breachList = document.getElementById('breachList');
+            breachList.innerHTML = ''; // Clear previous results
+            const breachesFound = [];
+
+            // Helper to add breach messages
+            function addBreach(message) {
+                breachesFound.push(message);
+                const li = document.createElement('li');
+                li.textContent = message;
+                breachList.appendChild(li);
+            }
+
+            // --- Implement Breach Checks ---
+
+            // 1. Minimum RDOs check (per 28-day roster period)
+            // This is complex as the current data doesn't explicitly mark RDOs or Grey Days.
+            // Assuming "RDO" or "GREY" in the "Duty" column indicates a day off.
+            // This needs to be calculated per 28-day period from the roster start.
+            // For a precise check, you might need the exact start date of the roster period from the input.
+            // For now, let's do a simplified count across the entire pasted roster.
+            let rdoCount = 0;
+            let greyDayCount = 0;
+            let currentRosterPeriodStart = null;
+            let currentRosterPeriodEnd = null;
+
+            // Determine the current effective RDO/Grey Day requirements based on the current date
+            const today = new Date(); // Current date for checking phased requirements
+            const commDate = new Date('2025-03-14'); // Assuming Commencement Date based on the PDF 
+            const firstGreyDayImplDate = new Date('2025-05-26');
+            const secondGreyDayImplDate = new Date('2025-08-18');
+            let requiredRDOs = 8;
+            let requiredGreyDays = 0;
+
+            // This logic is a simplification. The agreement states "first full pay period after Approval"
+            // and then specific dates. We're using the dates directly for demonstration.
+            if (today >= firstGreyDayImplDate && today < secondGreyDayImplDate) {
+                requiredGreyDays = 1; [cite: 200]
+            } else if (today >= secondGreyDayImplDate) {
+                requiredGreyDays = 2; [cite: 200]
+            }
+            // The "Additional RDO Date" is "the First day of the First full roster period following twelve (12) months from the Commencement Date".
+            // This needs a more dynamic calculation based on the actual roster periods.
+            // For now, let's assume if we are past the secondGreyDayImplDate, we eventually transition to 9 RDOs + 1 Grey Day.
+            // A more robust solution would require knowing the exact 28-day roster cycles.
+            // As per nominal expiry date, it's 1 February 2028. 
+
+            // To properly check per 28-day roster period, you'd need to define roster period boundaries.
+            // Assuming the input is a single roster period for this example:
+            roster.forEach(entry => {
+                if (entry.dutyType && entry.dutyType.toUpperCase().includes('RDO')) {
+                    rdoCount++;
+                }
+                if (entry.dutyType && entry.dutyType.toUpperCase().includes('GREY DAY')) {
+                    greyDayCount++;
+                }
+            });
+
+            // This check assumes the *pasted roster input* represents a single 28-day period
+            // and applies the *current* date's RDO/Grey Day requirements to it.
+            // For more accurate checking over multiple roster periods, you'd need to segment the roster data.
+            const totalDays = roster.length;
+            const daysInRosterPeriod = 28; // Standard roster period length 
+
+            if (totalDays >= daysInRosterPeriod) { // Check if we have enough data for a full roster period
+                if (rdoCount < requiredRDOs) {
+                    addBreach(`RDOs Breach: Only ${rdoCount} RDOs found. Minimum required is ${requiredRDOs}.`); [cite: 200]
+                }
+                if (greyDayCount < requiredGreyDays) {
+                    addBreach(`Grey Days Breach: Only ${greyDayCount} Grey Days found. Minimum required is ${requiredGreyDays}.`); [cite: 200]
+                }
+            } else {
+                addBreach("Insufficient data for a full 28-day roster period to check RDOs/Grey Days thoroughly.");
+            }
+
+
+            // 2. Weekend Off check
+            let hasWeekendOff = false;
+            let currentWeekendDays = 0; // Count consecutive Saturday/Sunday RDOs
+            let currentWeekendStart = null;
+
+            // Iterate through the roster to find consecutive Saturday and Sunday RDOs
+            for (let i = 0; i < roster.length; i++) {
+                const entry = roster[i];
+                const dayOfWeek = entry.date.getDay(); // 0 for Sunday, 6 for Saturday
+
+                if (entry.dutyType && entry.dutyType.toUpperCase().includes('RDO')) {
+                    if (dayOfWeek === 6) { // Saturday
+                        currentWeekendStart = entry.date;
+                        currentWeekendDays = 1;
+                    } else if (dayOfWeek === 0 && currentWeekendStart && (entry.date.getTime() - currentWeekendStart.getTime()) === (24 * 60 * 60 * 1000)) { // Sunday immediately after a Saturday
+                        currentWeekendDays++;
+                        if (currentWeekendDays >= 2) {
+                            hasWeekendOff = true;
+                            break; // Found a weekend off, no need to check further
+                        }
+                    } else {
+                        currentWeekendDays = 0; // Reset if not consecutive or not a weekend RDO
+                        currentWeekendStart = null;
+                    }
+                } else {
+                    currentWeekendDays = 0; // Reset if not an RDO
+                    currentWeekendStart = null;
+                }
+            }
+
+            if (!hasWeekendOff) {
+                addBreach("Weekend Off Breach: At least one weekend (Saturday and Sunday as RDOs) free of all duty is required per roster period."); [cite: 211]
+            }
+
+
+            // 3. Consecutive Duty Tours (6 days max, then 2 days off)
+            let consecutiveDutyDays = 0;
+            let lastDutyEnd = null; // Store debrief time of the previous duty
+            const TWO_DAYS_IN_MS = 2 * 24 * 60 * 60 * 1000;
+
+            for (let i = 0; i < roster.length; i++) {
+                const entry = roster[i];
+                const currentDutyStart = new Date(entry.date);
+                const currentDebriefTime = parseTime(entry.debriefTime);
+                const currentBriefTime = parseTime(entry.briefTime);
+
+                // Assuming "RDO" or "GREY DAY" indicates a day off
+                if (entry.dutyType && (entry.dutyType.toUpperCase().includes('RDO') || entry.dutyType.toUpperCase().includes('GREY DAY'))) {
+                    consecutiveDutyDays = 0; // Reset consecutive duty days on a day off
+                    lastDutyEnd = null; // No active duty to track end time
+                } else {
+                    consecutiveDutyDays++;
+
+                    if (consecutiveDutyDays > 6) {
+                        // Check if the previous block of 6 duties was properly broken
+                        let daysOffBeforeCurrentStreak = 0;
+                        for (let j = i - 1; j >= 0; j--) {
+                            const prevEntry = roster[j];
+                            if (prevEntry.dutyType && (prevEntry.dutyType.toUpperCase().includes('RDO') || prevEntry.dutyType.toUpperCase().includes('GREY DAY'))) {
+                                daysOffBeforeCurrentStreak++;
+                            } else {
+                                break; // Not a day off, break the count
+                            }
+                        }
+                        if (daysOffBeforeCurrentStreak < 2) {
+                            addBreach(`Consecutive Duty Tours Breach: Pilot worked ${consecutiveDutyDays} consecutive days ending on ${entry.dateString} without at least 2 consecutive days off preceding this stretch. Max is 6 consecutive duty days followed by 2 days off.`); [cite: 210]
+                        }
+                    }
+                }
+            }
+
+
+            // 4. Maximum Number of Early Starts (3 starts before 0600 in any 7-day period)
+            // This is trickier as we need to look at a rolling 7-day window.
+            const earlyStartsThreshold = 3;
+            const sevenDaysInMs = 7 * 24 * 60 * 60 * 1000;
+
+            for (let i = 0; i < roster.length; i++) {
+                const currentEntry = roster[i];
+                const currentBriefTimeMinutes = parseTime(currentEntry.briefTime);
+
+                if (currentBriefTimeMinutes < parseTime('06:00') && !(currentEntry.dutyType && (currentEntry.dutyType.toUpperCase().includes('RDO') || currentEntry.dutyType.toUpperCase().includes('GREY DAY') || currentEntry.dutyType.toUpperCase().includes('LEAVE')))) {
+                    let earlyStartsInWindow = 0;
+                    const windowStartTime = currentEntry.date.getTime() - sevenDaysInMs;
+
+                    for (let j = 0; j <= i; j++) {
+                        const checkEntry = roster[j];
+                        if (checkEntry.date.getTime() >= windowStartTime && checkEntry.date.getTime() <= currentEntry.date.getTime()) {
+                            const checkBriefTimeMinutes = parseTime(checkEntry.briefTime);
+                            if (checkBriefTimeMinutes < parseTime('06:00') && !(checkEntry.dutyType && (checkEntry.dutyType.toUpperCase().includes('RDO') || checkEntry.dutyType.toUpperCase().includes('GREY DAY') || checkEntry.dutyType.toUpperCase().includes('LEAVE')))) {
+                                earlyStartsInWindow++;
+                            }
+                        }
+                    }
+
+                    if (earlyStartsInWindow > earlyStartsThreshold) {
+                        addBreach(`Early Starts Breach: On or before ${currentEntry.dateString}, there are ${earlyStartsInWindow} starts before 0600 within a 7-day period. Maximum allowed is ${earlyStartsThreshold}.`); [cite: 194]
+                    }
+                }
+            }
+
+
+            // Display overall result
+            if (breachesFound.length === 0) {
+                const li = document.createElement('li');
+                li.textContent = "No roster breaches found based on the implemented checks.";
+                li.classList.add('no-breach');
+                breachList.appendChild(li);
+            }
+
+            document.getElementById('breachResults').style.display = 'block'; // Show results div
+        }
+
+
+        function generatePrintout() {
+            let lines = document.getElementById('rosterInput').value.trim().split('\n');
+            if (!lines.length) return alert("Paste your roster first.");
+            lines = cleanHeaderLines(lines);
+
+            const tbody = document.getElementById('printTableBody');
+            const table = document.getElementById('printTable');
+            tbody.innerHTML = '';
+
+            const newBlockRegex = /^\d{2}\/\w{3}\/\d{4}[ \t]/;
+            const timeSummaryRegex = /^\d{1,2}:\d{2}[ \t]+\d{1,2}:\d{2}[ \t]+\d{1,2}:\d{2}[ \t]+\d{1,2}:\d{2}$/;
+            let buffer = [];
+            let totals = [0, 0, 0, 0];
+
+            function parseMinutes(time) {
+                const [h, m] = time.split(':').map(Number);
+                return h * 60 + m;
+            }
+
+            function formatMinutes(mins) {
+                const h = Math.floor(mins / 60);
+                const m = mins % 60;
+                return `${h}:${m.toString().padStart(2, '0')}`;
+            }
+
+            function flushRow() {
+                if (!buffer.length) return;
+
+                const row = Array(10).fill('');
+                const start = buffer[0].split(/\t| {2,}/);
+                for (let i = 0; i < start.length && i < 5; i++) row[i] = start[i];
+
+                const [dd, mon, yyyy] = row[0].split(/[\/\s]/);
+                const months = {
+                    Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5,
+                    Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11
+                };
+                const d = new Date(Number(yyyy), months[mon], Number(dd)); // Ensure year is number
+                const dayOfWeek = d.toLocaleDateString('en-AU', { weekday: 'short' });
+                const fullDay = d.toLocaleDateString('en-AU', { weekday: 'long' });
+                row[0] = `${dayOfWeek} ${row[0]}`;
+                const isWeekend = (fullDay === 'Saturday' || fullDay === 'Sunday');
+
+                const summaryIndex = buffer.findIndex(l => timeSummaryRegex.test(l));
+                let summary = [];
+                if (summaryIndex !== -1) {
+                    summary = buffer[summaryIndex].split(/\t| {2,}/);
+                    buffer.splice(summaryIndex, 1);
+                }
+
+                row[5] = buffer.slice(1).join('\n');
+                for (let i = 0; i < summary.length; i++) row[6 + i] = summary[i];
+
+                for (let i = 6; i <= 9; i++) {
+                    if (row[i].match(/^\d{1,2}:\d{2}$/)) {
+                        totals[i - 6] += parseMinutes(row[i]);
+                    }
+                }
+
+                const tr = document.createElement('tr');
+                if (isWeekend) tr.classList.add('weekend-row');
+                row.forEach(val => {
+                    const td = document.createElement('td');
+                    td.textContent = val;
+                    tr.appendChild(td);
+                });
+                tbody.appendChild(tr);
+                buffer = [];
+            }
+
+            lines.forEach(line => {
+                if (newBlockRegex.test(line)) flushRow();
+                buffer.push(line);
+            });
+            flushRow();
+
+            const summaryRow = document.createElement('tr');
+            for (let i = 0; i < 10; i++) {
+                const td = document.createElement('td');
+                if (i === 0) td.textContent = 'TOTAL';
+                if (i >= 6) td.textContent = formatMinutes(totals[i - 6]);
+                summaryRow.appendChild(td);
+            }
+            summaryRow.style.fontWeight = 'bold';
+            summaryRow.style.borderTop = '2px solid #000';
+            tbody.appendChild(summaryRow);
+
+            table.style.display = 'table';
+            window.print();
+        }
+    </script>
 </body>
 </html>
