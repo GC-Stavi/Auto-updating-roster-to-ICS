@@ -460,11 +460,11 @@
             <p>These checks are based on the **Alliance Group (Qld Pilots) Enterprise Agreement 2024**.</p>
             <p>The tool currently checks for the following potential roster breaches:</p>
             <ul>
-                <li>**Early Starts**: More than 3 consecutive starts before 06:00.</li>
-                <li>**Minimum RDOs**: Fewer than 8 Rostered Days Off in a 28-day roster period.</li>
-                <li>**Weekend Off**: No full Saturday and Sunday RDO block in a 28-day roster period.</li>
-                <li>**Consecutive Duty Tours**: Two tours each consisting of 6 or more consecutive duty days without a minimum of 2 consecutive days off in between.</li>
-                <li>**Rest Periods (Home Base)**: Less than 12 hours rest between duties when both duties are at Home Base.</li>
+                <li>**Early Starts** [EA 14.8]: More than 3 consecutive starts before 06:00.</li>
+                <li>**Minimum RDOs** [EA 14.11]: Fewer than 8 Rostered Days Off in a 28-day roster period.</li>
+                <li>**Weekend Off** [EA 14.16]: No full Saturday and Sunday RDO block in a 28-day roster period.</li>
+                <li>**Consecutive Duty Tours** [EA 14.15]: Two tours each consisting of 6 or more consecutive duty days without a minimum of 2 consecutive days off in between.</li>
+                <li>**Rest Periods (Home Base)** [EA 14.48]: Less than 12 hours rest between duties when both duties are at Home Base.</li>
                 <li>**Short Rest Periods (Info)**: Less than 12 hours rest between duties when one or both duties are away from Home Base. This is for information only as it might be permissible under specific FRMS rules (e.g., 10-hour rule when away).</li>
             </ul>
             <p>
@@ -731,14 +731,14 @@
                     }
                 } else {
                     if (consecutiveEarlyStarts > earlyStartsThreshold) {
-                        addBreach(`Early Starts Breach: Started on ${earlyStartBreachStartDate}, with ${consecutiveEarlyStarts} consecutive duties starting before 06:00 (more than ${earlyStartsThreshold} allowed).`);
+                        addBreach(`Early Starts Breach [EA 14.8]: Started on ${earlyStartBreachStartDate}, with ${consecutiveEarlyStarts} consecutive duties starting before 06:00 (more than ${earlyStartsThreshold} allowed).`);
                     }
                     consecutiveEarlyStarts = 0;
                     earlyStartBreachStartDate = null;
                 }
             }
             if (consecutiveEarlyStarts > earlyStartsThreshold) {
-                addBreach(`Early Starts Breach: Started on ${earlyStartBreachStartDate}, with ${consecutiveEarlyStarts} consecutive duties starting before 06:00 (more than ${earlyStartsThreshold} allowed).`);
+                addBreach(`Early Starts Breach [EA 14.8]: Started on ${earlyStartBreachStartDate}, with ${consecutiveEarlyStarts} consecutive duties starting before 06:00 (more than ${earlyStartsThreshold} allowed).`);
             }
 
             // --- Minimum RDOs Check (fewer than 8 in 28 days) ---
@@ -761,7 +761,7 @@
                     }
 
                     if (rdoCount < RDO_MINIMUM) {
-                        addBreach(`RDO Breach: Only ${rdoCount} RDOs rostered in the ${rosterDurationDays}-day period from ${firstDate.toLocaleDateString('en-AU')} to ${lastDate.toLocaleDateString('en-AU')}. A minimum of ${RDO_MINIMUM} RDOs are required.`);
+                        addBreach(`RDO Breach [EA 14.11]: Only ${rdoCount} RDOs rostered in the ${rosterDurationDays}-day period from ${firstDate.toLocaleDateString('en-AU')} to ${lastDate.toLocaleDateString('en-AU')}. A minimum of ${RDO_MINIMUM} RDOs are required.`);
                     }
                 }
             }
@@ -791,7 +791,7 @@
                 const rosterDurationDays = Math.round(rosterDurationMs / (1000 * 60 * 60 * 24)) + 1;
 
                 if (!hasWeekendOff && rosterDurationDays >= (ROSTER_PERIOD_DAYS - 1) && rosterDurationDays <= (ROSTER_PERIOD_DAYS + 1)) {
-                    addBreach(`Weekend Off Breach: No full weekend (Saturday and Sunday as RDOs) found in the roster period.`);
+                    addBreach(`Weekend Off Breach [EA 14.16]: No full weekend (Saturday and Sunday as RDOs) found in the roster period.`);
                 }
             }
 
@@ -850,7 +850,7 @@
                 maxConsecutiveDaysOffFound = Math.max(maxConsecutiveDaysOffFound, currentConsecutiveDaysOffStreak);
 
                 if (maxConsecutiveDaysOffFound < REQUIRED_DAYS_OFF_BETWEEN_TOURS) {
-                    addBreach(`Consecutive Duty Tours Breach: Worked 6+ days (ending ${firstTour.end}) then another 6+ days (starting ${secondTour.start}) with only ${maxConsecutiveDaysOffFound} consecutive days off in between. Minimum ${REQUIRED_DAYS_OFF_BETWEEN_TOURS} consecutive days off required.`);
+                    addBreach(`Consecutive Duty Tours Breach [EA 14.15]: Worked 6+ days (ending ${firstTour.end}) then another 6+ days (starting ${secondTour.start}) with only ${maxConsecutiveDaysOffFound} consecutive days off in between. Minimum ${REQUIRED_DAYS_OFF_BETWEEN_TOURS} consecutive days off required.`);
                 }
             }
 
@@ -888,11 +888,11 @@
 
                 if (isPrevDutyAtHomeBase && isCurrentDutyAtHomeBase) {
                     if (restDurationMinutes < HOME_BASE_MIN_REST_MINUTES) {
-                        addBreach(`Rest Period Breach (Home Base): Only ${formatMinutesToHHMM(restDurationMinutes)} rest between duties on ${prevEntry.dateString} (debrief: ${prevEntry.debriefTime}) and ${currentEntry.dateString} (brief: ${currentEntry.briefTime}). Minimum ${HOME_BASE_MIN_REST_HOURS} hours required at Home Base.`);
+                        addBreach(`Rest Period Breach (Home Base) [EA 14.48]: Only ${formatMinutesToHHMM(restDurationMinutes)} rest between duties on ${prevEntry.dateString} (debrief: ${prevEntry.debriefTime}) and ${currentEntry.dateString} (brief: ${currentEntry.briefTime}). Minimum ${HOME_BASE_MIN_REST_HOURS} hours required at Home Base.`);
                     }
                 } else {
                     if (restDurationMinutes < HOME_BASE_MIN_REST_MINUTES) {
-                        addBreach(`Short Rest Period (Info): Only ${formatMinutesToHHMM(restDurationMinutes)} rest between duties on ${prevEntry.dateString} (debrief: ${prevEntry.debriefTime}) and ${currentEntry.dateString} (brief: ${currentEntry.briefTime}). This may be permissible if away from Home Base (e.g., 10-hour rule) or under specific FRMS limitations.`, true);
+                        addBreach(`Short Rest Period (Info) [EA 14.48]: Only ${formatMinutesToHHMM(restDurationMinutes)} rest between duties on ${prevEntry.dateString} (debrief: ${prevEntry.debriefTime}) and ${currentEntry.dateString} (brief: ${currentEntry.briefTime}). This may be permissible if away from Home Base (e.g., 10-hour rule) or under specific FRMS limitations.`, true);
                     }
                 }
             }
