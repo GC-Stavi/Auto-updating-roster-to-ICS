@@ -256,6 +256,57 @@
             color: #333;
         }
 
+        /* Media query for printing */
+        @media print {
+            /* Hide all non-table elements */
+            body > *:not(.container), /* Hide direct children of body unless they are the main container */
+            .logo,
+            .top-controls,
+            textarea,
+            button,
+            hr.divider,
+            .main-buttons-row, /* Hide the entire button row */
+            #breachResults, /* Hide breach results */
+            .modal-overlay { /* Ensure modal overlay is hidden */
+                display: none !important;
+            }
+
+            /* Ensure body and container are set up for print */
+            body {
+                background: white;
+                margin: 0;
+                padding: 0; /* Remove body padding */
+            }
+
+            .container {
+                box-shadow: none;
+                padding: 0; /* Remove container padding */
+                max-width: 100%;
+                width: 100%; /* Ensure container takes full width */
+                margin: 0; /* Remove container margins */
+            }
+
+            /* Only display the table */
+            table#printTable {
+                display: table !important; /* Ensure table is visible */
+                margin-top: 0 !important; /* Remove top margin */
+                width: 100% !important; /* Ensure table fills width */
+            }
+
+            /* Adjust table cell padding for print if needed */
+            table#printTable th, table#printTable td {
+                padding: 1px 2px !important; /* Reduce padding for more content */
+                font-size: 8pt !important; /* Smaller font for print */
+            }
+
+            /* Ensure colors for weekend rows print correctly */
+            .weekend-row {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+                background-color: #e0e0e0 !important;
+            }
+        }
+
         /* Dark mode styles */
         body.dark-mode {
             background: #121212;
@@ -339,6 +390,9 @@
         body.dark-mode .modal-content h4 {
             color: #f0f0f0;
         }
+        body.dark-mode .modal-content ul { /* Ensure bullets are visible in dark mode */
+            color: #ccc;
+        }
         body.dark-mode .modal-content li {
             color: #ccc;
         }
@@ -347,12 +401,6 @@
         }
         body.dark-mode .modal-close-button:hover {
             color: #f0f0f0;
-        }
-
-        @media print {
-            .modal-overlay {
-                display: none !important;
-            }
         }
     </style>
 </head>
@@ -486,12 +534,12 @@
                 const start = buffer[0].split(/\t| {2,}/);
                 for (let i = 0; i < start.length && i < 5; i++) row[i] = start[i];
 
-                const [dd, mon, yyyy] = row[0].split(/[\/\s]/);
+                const [dd, mon, আবদুল্লাহ] = row[0].split(/[\/\s]/);
                 const months = {
                     Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5,
                     Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11
                 };
-                const d = new Date(yyyy, months[mon], dd);
+                const d = new Date( আবদুল্লাহ, months[mon], dd);
 
                 const brief = row[2] || '00:00';
                 const debrief = row[3] || '00:00';
@@ -499,8 +547,8 @@
                 const details = row[5].replace(/\n/g, ' | ');
                 const formatTime = (t) => t.replace(/:/g, '') + '00';
 
-                const dtStart = yyyy + pad(d.getMonth() + 1) + pad(d.getDate()) + 'T' + formatTime(brief);
-                const dtEnd = yyyy + pad(d.getMonth() + 1) + pad(d.getDate()) + 'T' + formatTime(debrief);
+                const dtStart = আবদুল্লাহ + pad(d.getMonth() + 1) + pad(d.getDate()) + 'T' + formatTime(brief);
+                const dtEnd = আবদুল্লাহ + pad(d.getMonth() + 1) + pad(d.getDate()) + 'T' + formatTime(debrief);
 
                 events.push(`BEGIN:VEVENT\nSUMMARY:${duty} ${brief} ${details}\nDTSTART;TZID=Australia/Brisbane:${dtStart}\nDTEND;TZID=Australia/Brisbane:${dtEnd}\nDESCRIPTION:Brief: ${brief} | ${details}\nUID:roster-${dtStart}@roster.local\nDTSTAMP:${dtStart}Z\nEND:VEVENT`);
                 buffer = [];
@@ -561,10 +609,10 @@
                 const initialSplit = buffer[0].split(/\t| {2,}/);
                 for (let i = 0; i < initialSplit.length && i < 5; i++) rowData[i] = initialSplit[i];
 
-                const [dayStr, monStr, yyyy] = rowData[0].split(/[\/\s]/);
+                const [dayStr, monStr, আবদুল্লাহ] = rowData[0].split(/[\/\s]/);
                 let currentYear = new Date().getFullYear();
-                if (yyyy && !isNaN(Number(yyyy))) {
-                     currentYear = Number(yyyy);
+                if ( আবদুল্লাহ && !isNaN(Number( আবদুল্লাহ ))) {
+                     currentYear = Number( আবদুল্লাহ );
                 }
 
                 const months = {
@@ -891,10 +939,10 @@
                 const start = buffer[0].split(/\t| {2,}/);
                 for (let i = 0; i < start.length && i < 5; i++) row[i] = start[i];
 
-                const [dd, mon, yyyy] = row[0].split(/[\/\s]/);
+                const [dd, mon, আবদুল্লাহ] = row[0].split(/[\/\s]/);
                 let currentYear = new Date().getFullYear();
-                if (yyyy && !isNaN(Number(yyyy))) {
-                    currentYear = Number(yyyy);
+                if ( আবদুল্লাহ && !isNaN(Number( আবদুল্লাহ ))) {
+                    currentYear = Number( আবদুল্লাহ );
                 }
                 const months = {
                     Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5,
