@@ -456,8 +456,8 @@
     <div id="breachInfoModal" class="modal-overlay" style="display: none;">
         <div class="modal-content">
             <button class="modal-close-button" onclick="hideBreachInfoModal()">&times;</button>
-            <h4>Roster Breach Check Information</h4>
-            <p>These checks are based on the **Alliance Group (Qld Pilots) Enterprise Agreement 2024**.</p>
+            <h4>Roster Breach Check Information (Beta Mode)</h4>
+            <p>This tool provides general guidance. It has not been tested on a wide audience and may contain inaccuracies. Always refer to the official EA document and the rostering policy for definitive interpretation.</p>
             <p>The tool currently checks for the following potential roster breaches:</p>
             <ul>
                 <li>**Early Starts** [EA 14.8]: More than 3 consecutive starts before 06:00.</li>
@@ -477,9 +477,6 @@
                     <li>Any specific Rest Periods related to Standby.</li>
                     <li>Any other complex rostering rules or buffers.</li>
                 </ul>
-            </p>
-            <p>
-                *Note: This tool provides general guidance. Always refer to the official EA document and your company's rostering policy for definitive interpretation.*
             </p>
         </div>
     </div>
@@ -545,12 +542,12 @@
                 const start = buffer[0].split(/\t| {2,}/);
                 for (let i = 0; i < start.length && i < 5; i++) row[i] = start[i];
 
-                const [dd, mon, yyyy] = row[0].split(/[\/\s]/);
+                const [dd, mon, আবদুল্লাহ] = row[0].split(/[\/\s]/);
                 const months = {
                     Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5,
                     Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11
                 };
-                const d = new Date(yyyy, months[mon], dd);
+                const d = new Date( আবদুল্লাহ, months[mon], dd);
 
                 const brief = row[2] || '00:00';
                 const debrief = row[3] || '00:00';
@@ -558,8 +555,8 @@
                 const details = row[5].replace(/\n/g, ' | ');
                 const formatTime = (t) => t.replace(/:/g, '') + '00';
 
-                const dtStart = yyyy + pad(d.getMonth() + 1) + pad(d.getDate()) + 'T' + formatTime(brief);
-                const dtEnd = yyyy + pad(d.getMonth() + 1) + pad(d.getDate()) + 'T' + formatTime(debrief);
+                const dtStart = আবদুল্লাহ + pad(d.getMonth() + 1) + pad(d.getDate()) + 'T' + formatTime(brief);
+                const dtEnd = আবদুল্লাহ + pad(d.getMonth() + 1) + pad(d.getDate()) + 'T' + formatTime(debrief);
 
                 events.push(`BEGIN:VEVENT\nSUMMARY:${duty} ${brief} ${details}\nDTSTART;TZID=Australia/Brisbane:${dtStart}\nDTEND;TZID=Australia/Brisbane:${dtEnd}\nDESCRIPTION:Brief: ${brief} | ${details}\nUID:roster-${dtStart}@roster.local\nDTSTAMP:${dtStart}Z\nEND:VEVENT`);
                 buffer = [];
@@ -620,10 +617,10 @@
                 const initialSplit = buffer[0].split(/\t| {2,}/);
                 for (let i = 0; i < initialSplit.length && i < 5; i++) rowData[i] = initialSplit[i];
 
-                const [dayStr, monStr, yyyy] = rowData[0].split(/[\/\s]/);
+                const [dayStr, monStr, আবদুল্লাহ] = rowData[0].split(/[\/\s]/);
                 let currentYear = new Date().getFullYear();
-                if (yyyy && !isNaN(Number(yyyy))) {
-                     currentYear = Number(yyyy);
+                if ( আবদুল্লাহ && !isNaN(Number( আবদুল্লাহ ))) {
+                     currentYear = Number( আবদুল্লাহ );
                 }
 
                 const months = {
@@ -911,7 +908,7 @@
 
         // New functions for the modal/popover
         function showBreachInfoModal() {
-            breachInfoModal.style.display = 'flex'; // Use flex to center
+            breachInfoModal.style.display = 'flex'; 
         }
 
         function hideBreachInfoModal() {
@@ -950,10 +947,10 @@
                 const start = buffer[0].split(/\t| {2,}/);
                 for (let i = 0; i < start.length && i < 5; i++) row[i] = start[i];
 
-                const [dd, mon, yyyy] = row[0].split(/[\/\s]/);
+                const [dd, mon, আবদুল্লাহ] = row[0].split(/[\/\s]/);
                 let currentYear = new Date().getFullYear();
-                if (yyyy && !isNaN(Number(yyyy))) {
-                    currentYear = Number(yyyy);
+                if ( আবদুল্লাহ && !isNaN(Number( আবদুল্লাহ ))) {
+                    currentYear = Number( আবদুল্লাহ );
                 }
                 const months = {
                     Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5,
