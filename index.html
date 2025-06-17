@@ -148,169 +148,121 @@
             color: #5cb85c; /* Green for no breaches */
         }
 
-        /* Styles for info icon and tooltip */
-        .info-container {
-            display: inline-flex; /* Allows icon and button to sit next to each other */
+        /* Info container for button and icon */
+        .button-group {
+            display: flex;
             align-items: center;
-            position: relative; /* For tooltip positioning */
+            margin-top: 0.5em;
         }
 
-        .info-icon {
-            margin-left: 5px; /* Space between button and icon */
-            cursor: help; /* Changes cursor to a question mark */
-            font-size: 1.2em; /* Makes the 'i' a bit larger */
+        .info-button {
+            padding: 0.6em 1em;
+            font-size: 1em;
             font-weight: bold;
-            color: #555;
-            background-color: #eee; /* Matches button background */
-            border: 1px solid #ccc; /* Matches button border */
-            border-radius: 50%; /* Makes it a circle */
-            width: 24px; /* Fixed width */
-            height: 24px; /* Fixed height */
-            display: inline-flex;
+            cursor: pointer;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+            background: #eee;
+            margin-left: 0.5em; /* Space between breach button and info button */
+        }
+
+        .info-button:hover {
+            background-color: #e0e0e0;
+        }
+
+        /* Modal/Popover styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent black overlay */
+            display: flex;
             justify-content: center;
             align-items: center;
-            line-height: 1; /* Aligns 'i' vertically */
+            z-index: 1000; /* Ensure it's on top */
         }
 
-        .info-icon:hover {
-            background-color: #e0e0e0; /* Matches button hover */
+        .modal-content {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            max-width: 500px; /* Max width for the popover */
+            width: 90%; /* Responsive width */
+            max-height: 80vh; /* Max height to prevent overflow on small screens */
+            overflow-y: auto; /* Enable scrolling if content is too long */
+            position: relative;
         }
 
-        .tooltip-text {
-            visibility: hidden;
-            width: 250px; /* Adjust width as needed */
-            background-color: #555;
-            color: #fff;
-            text-align: left;
-            border-radius: 6px;
-            padding: 10px;
+        .modal-content h4 {
+            margin-top: 0;
+            margin-bottom: 15px;
+            color: #333;
+            font-size: 1.2em;
+        }
+
+        .modal-content ul {
+            list-style-type: disc; /* Use standard bullets */
+            padding-left: 20px;
+            margin-bottom: 15px;
+        }
+
+        .modal-content li {
+            margin-bottom: 5px;
+            font-weight: normal; /* Override bold from breach list */
+            color: #555;
+        }
+
+        .modal-close-button {
             position: absolute;
-            z-index: 1;
-            bottom: 125%; /* Position above the icon */
-            left: 50%;
-            margin-left: -125px; /* Center the tooltip */
-            opacity: 0;
-            transition: opacity 0.3s;
-            font-size: 0.85em; /* Smaller font for tooltip */
-            font-weight: normal;
-            line-height: 1.4;
+            top: 10px;
+            right: 15px;
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #aaa;
+            cursor: pointer;
+            background: none;
+            border: none;
+            padding: 0;
         }
 
-        .info-icon:hover .tooltip-text {
-            visibility: visible;
-            opacity: 1;
+        .modal-close-button:hover {
+            color: #333;
         }
 
-        /* Tooltip arrow */
-        .tooltip-text::after {
-            content: "";
-            position: absolute;
-            top: 100%;
-            left: 50%;
-            margin-left: -5px;
-            border-width: 5px;
-            border-style: solid;
-            border-color: #555 transparent transparent transparent;
-        }
-
-        @media print {
-            .logo, .top-controls, textarea, button, hr.divider, #breachResults, .info-container { /* Hide info elements on print */
-                display: none !important;
-            }
-
-            body {
-                background: white;
-                margin: 0;
-            }
-
-            .container {
-                box-shadow: none;
-                padding: 0;
-                max-width: 100%;
-            }
-
-            table#printTable {
-                display: table;
-            }
-
-            .weekend-row {
-                -webkit-print-color-adjust: exact;
-                print-color-adjust: exact;
-                background-color: #e0e0e0 !important;
-            }
-        }
-
-        /* Dark mode styles */
-        body.dark-mode {
-            background: #121212;
-            color: #f0f0f0;
-        }
-
-        body.dark-mode .container {
-            background: #1e1e1e;
-            box-shadow: 0 0 10px #000;
-        }
-
-        body.dark-mode textarea {
-            background: #2a2a2a;
-            color: #f0f0f0;
-            border: 1px solid #555;
-        }
-
-        body.dark-mode button,
-        body.dark-mode .dark-toggle-btn {
+        /* Dark mode styles for modal */
+        body.dark-mode .info-button {
             background: #333;
             color: #fff;
             border: 1px solid #555;
         }
-
-        body.dark-mode button:hover {
+        body.dark-mode .info-button:hover {
             background-color: #555;
         }
-
-        body.dark-mode table#printTable {
-            background: #1e1e1e;
+        body.dark-mode .modal-content {
+            background-color: #1e1e1e;
+            color: #f0f0f0;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+        }
+        body.dark-mode .modal-content h4 {
+            color: #f0f0f0;
+        }
+        body.dark-mode .modal-content li {
+            color: #ccc;
+        }
+        body.dark-mode .modal-close-button {
+            color: #888;
+        }
+        body.dark-mode .modal-close-button:hover {
             color: #f0f0f0;
         }
 
-        body.dark-mode table#printTable th,
-        body.dark-mode table#printTable td {
-            border-color: #555;
-        }
-
-        body.dark-mode .weekend-row {
-            background-color: #2f2f2f !important;
-        }
-
-        body.dark-mode #breachResults {
-            background-color: #2a2a2a;
-            border-color: #555;
-        }
-
-        body.dark-mode #breachResults h3 {
-            color: #f0f0f0;
-        }
-
-        body.dark-mode #breachResults li {
-            color: #ff9999; /* Lighter red for dark mode breaches */
-        }
-        body.dark-mode #breachResults li.info {
-            color: #99bbff; /* Lighter blue for dark mode info */
-        }
-        body.dark-mode .info-icon {
-            background-color: #333;
-            border-color: #555;
-            color: #fff;
-        }
-        body.dark-mode .info-icon:hover {
-            background-color: #555;
-        }
-        body.dark-mode .tooltip-text {
-            background-color: #444;
-            color: #eee;
-        }
-        body.dark-mode .tooltip-text::after {
-            border-color: #444 transparent transparent transparent;
+        @media print {
+            .modal-overlay {
+                display: none !important; /* Hide modal for printing */
+            }
         }
     </style>
 </head>
@@ -328,23 +280,10 @@
         <textarea id="rosterInput" placeholder="Paste your roster here..."></textarea><br/>
         <button onclick="generatePrintout()">Print This Page</button>
         <button onclick="generateICS()">Download ICS File</button>
-        <div class="info-container">
+        
+        <div class="button-group">
             <button onclick="checkForBreaches()">Check for Roster Breaches</button>
-            <div class="info-icon">
-                i
-                <span class="tooltip-text">
-                    These checks are based on the **Alliance Group (Qld Pilots) EA 2024**.
-                    <br><br>
-                    Current checks include:
-                    <ul>
-                        <li>**Early Starts**: More than 3 consecutive starts before 06:00.</li>
-                        <li>**Minimum RDOs**: Fewer than 8 Rostered Days Off in a 28-day roster period.</li>
-                        <li>**Weekend Off**: No full Saturday and Sunday RDO block in a 28-day roster period.</li>
-                        <li>**Consecutive Duty Tours**: Two 6-day (or more) duty tours without a minimum of 2 consecutive days off in between.</li>
-                        <li>**Rest Periods**: Less than 12 hours rest between duties at Home Base (breach). Also identifies shorter rest periods away from Home Base (info).</li>
-                    </ul>
-                </span>
-            </div>
+            <button class="info-button" onclick="showBreachInfoModal()">?</button>
         </div>
 
         <div id="breachResults">
@@ -370,6 +309,26 @@
             </thead>
             <tbody id="printTableBody"></tbody>
         </table>
+    </div>
+
+    <div id="breachInfoModal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <button class="modal-close-button" onclick="hideBreachInfoModal()">&times;</button>
+            <h4>Roster Breach Check Information</h4>
+            <p>These checks are based on the **Alliance Group (Qld Pilots) Enterprise Agreement 2024**.</p>
+            <p>The tool currently checks for the following potential roster breaches:</p>
+            <ul>
+                <li>**Early Starts**: More than 3 consecutive starts before 06:00.</li>
+                <li>**Minimum RDOs**: Fewer than 8 Rostered Days Off in a 28-day roster period.</li>
+                <li>**Weekend Off**: No full Saturday and Sunday RDO block in a 28-day roster period.</li>
+                <li>**Consecutive Duty Tours**: Two tours each consisting of 6 or more consecutive duty days without a minimum of 2 consecutive days off in between.</li>
+                <li>**Rest Periods (Home Base)**: Less than 12 hours rest between duties when both duties are at Home Base.</li>
+                <li>**Short Rest Periods (Info)**: Less than 12 hours rest between duties when one or both duties are away from Home Base. This is for information only as it might be permissible under specific FRMS rules (e.g., 10-hour rule when away).</li>
+            </ul>
+            <p>
+                *Note: This tool provides general guidance. Always refer to the official EA document and your company's rostering policy for definitive interpretation.*
+            </p>
+        </div>
     </div>
 
     <script>
@@ -510,28 +469,24 @@
                 const date = new Date(currentYear, months[monStr], Number(dayStr));
 
                 let summaryParts = [];
-                // Collect all lines after the initial line until a new block or a summary line
                 let detailsLines = [];
                 let foundSummary = false;
                 for (let k = 1; k < buffer.length; k++) {
                     if (timeSummaryRegex.test(buffer[k])) {
                         summaryParts = buffer[k].split(/\t| {2,}/);
                         foundSummary = true;
-                        break; // Stop collecting details once summary is found
+                        break;
                     } else {
                         detailsLines.push(buffer[k]);
                     }
                 }
-                rowData[5] = detailsLines.join('\n'); // Join all lines for 'details'
+                rowData[5] = detailsLines.join('\n');
 
-                // If summary wasn't found in buffer, or was part of the very first line (unlikely for this format)
-                // then summaryParts remain empty, and default values will be used.
-                // Re-extract the last 4 elements from the last details line if it looks like a summary and wasn't found explicitly
                 if (!foundSummary && detailsLines.length > 0) {
                      const lastDetailLine = detailsLines[detailsLines.length - 1];
                      if (timeSummaryRegex.test(lastDetailLine)) {
                         summaryParts = lastDetailLine.split(/\t| {2,}/);
-                        detailsLines.pop(); // Remove it from details as it's the summary
+                        detailsLines.pop();
                         rowData[5] = detailsLines.join('\n');
                      }
                 }
@@ -544,7 +499,7 @@
                     dutyType: rowData[1] ? rowData[1].trim() : '',
                     briefTime: rowData[2] ? rowData[2].trim() : '',
                     debriefTime: rowData[3] ? rowData[3].trim() : '',
-                    layover: rowData[4] ? rowData[4].trim() : '', // Will be empty if no layover
+                    layover: rowData[4] ? rowData[4].trim() : '',
                     details: rowData[5] ? rowData[5].trim() : '',
                     dutyHours: rowData[6] ? rowData[6].trim() : '',
                     flightHours: rowData[7] ? rowData[7].trim() : '',
@@ -576,18 +531,18 @@
             breachList.innerHTML = '';
             const breachesFound = [];
 
-            function addBreach(message, isInfo = false) { // Added isInfo parameter
+            function addBreach(message, isInfo = false) {
                 breachesFound.push(message);
                 const li = document.createElement('li');
                 li.textContent = message;
                 if (isInfo) {
-                    li.classList.add('info'); // Add 'info' class for informational messages
+                    li.classList.add('info');
                 }
                 breachList.appendChild(li);
             }
 
-            // --- Early Starts Breach Check (Consecutive Days with Breach) ---
-            const earlyStartsThreshold = 3; // Max allowed is 3, so > 3 is a breach
+            // --- Early Starts Breach Check (4+ consecutive before 06:00) ---
+            const earlyStartsThreshold = 3;
             const SIX_AM_IN_MINUTES = parseTime('06:00');
 
             let consecutiveEarlyStarts = 0;
@@ -622,18 +577,18 @@
                 addBreach(`Early Starts Breach: Started on ${earlyStartBreachStartDate}, with ${consecutiveEarlyStarts} consecutive duties starting before 06:00 (more than ${earlyStartsThreshold} allowed).`);
             }
 
-            // --- Minimum RDOs Check ---
-            const RDO_MINIMUM = 8; // Minimum RDOs required per roster period
-            const ROSTER_PERIOD_DAYS = 28; // A Roster Period is 28 days
+            // --- Minimum RDOs Check (fewer than 8 in 28 days) ---
+            const RDO_MINIMUM = 8;
+            const ROSTER_PERIOD_DAYS = 28;
 
             if (roster.length > 0) {
                 const firstDate = roster[0].date;
                 const lastDate = roster[roster.length - 1].date;
 
                 const rosterDurationMs = lastDate.getTime() - firstDate.getTime();
-                const rosterDurationDays = Math.round(rosterDurationMs / (1000 * 60 * 60 * 24)) + 1; // +1 to include both start and end day
+                const rosterDurationDays = Math.round(rosterDurationMs / (1000 * 60 * 60 * 24)) + 1;
 
-                if (rosterDurationDays >= (ROSTER_PERIOD_DAYS - 1) && rosterDurationDays <= (ROSTER_PERIOD_DAYS + 1)) { // Allowing for +/- 1 day variation
+                if (rosterDurationDays >= (ROSTER_PERIOD_DAYS - 1) && rosterDurationDays <= (ROSTER_PERIOD_DAYS + 1)) {
                     let rdoCount = 0;
                     for (const entry of roster) {
                         if (entry.dutyType.toUpperCase().includes('RDO')) {
@@ -647,14 +602,14 @@
                 }
             }
 
-            // --- One Weekend Off Check ---
+            // --- One Weekend Off Check (no Sat/Sun RDO block) ---
             let hasWeekendOff = false;
             if (roster.length > 0) {
                 for (let i = 0; i < roster.length - 1; i++) {
                     const currentEntry = roster[i];
                     const nextEntry = roster[i + 1];
 
-                    const currentDayOfWeek = currentEntry.date.getDay(); // 0 for Sunday, 6 for Saturday
+                    const currentDayOfWeek = currentEntry.date.getDay();
                     const nextDayOfWeek = nextEntry.date.getDay();
 
                     if (currentDayOfWeek === 6 && nextDayOfWeek === 0) { // Saturday (6), Sunday (0)
@@ -676,7 +631,7 @@
                 }
             }
 
-            // --- Consecutive Duty Tours Check (6 days on, needs 2 days off before next 6 days on) ---
+            // --- Consecutive Duty Tours Check (two 6+ day tours without 2+ consecutive days off in between) ---
             const DUTY_TOUR_LENGTH = 6;
             const REQUIRED_DAYS_OFF_BETWEEN_TOURS = 2;
 
@@ -736,15 +691,13 @@
             }
 
             // --- Rest Periods Between Duty Periods Check ---
-            const HOME_BASE_MIN_REST_HOURS = 12; // 12 hours minimum rest at Home Base
+            const HOME_BASE_MIN_REST_HOURS = 12;
             const HOME_BASE_MIN_REST_MINUTES = HOME_BASE_MIN_REST_HOURS * 60;
-            // AWAY_BASE_COMMON_REST_HOURS (not explicitly used as a threshold but as a reference for info)
 
             for (let i = 0; i < roster.length - 1; i++) {
                 const prevEntry = roster[i];
                 const currentEntry = roster[i + 1];
 
-                // Skip if current entry is an RDO, Grey Day, SBY, or Leave as it's not a direct duty period following another duty
                 const isCurrentEntryDuty = !(
                     currentEntry.dutyType.toUpperCase().includes('RDO') ||
                     currentEntry.dutyType.toUpperCase().includes('GREY DAY') ||
@@ -752,7 +705,6 @@
                     currentEntry.dutyType.toUpperCase().includes('LEAVE')
                 );
 
-                // Skip if previous entry was not a duty with a debrief time, or current has no brief time, or current is not a duty
                 if (isNaN(parseTime(prevEntry.debriefTime)) || isNaN(parseTime(currentEntry.briefTime)) || !isCurrentEntryDuty) {
                     continue;
                 }
@@ -767,21 +719,16 @@
                     restDurationMinutes = (24 * 60 - prevDebriefMinutes) + currentBriefMinutes;
                 }
                 
-                // Determine if both duties are at Home Base based on the 'Layover' field.
-                // An empty layover field implies Home Base.
                 const isPrevDutyAtHomeBase = prevEntry.layover.trim() === '';
                 const isCurrentDutyAtHomeBase = currentEntry.layover.trim() === '';
 
                 if (isPrevDutyAtHomeBase && isCurrentDutyAtHomeBase) {
-                    // Check for Home Base rest period breach
                     if (restDurationMinutes < HOME_BASE_MIN_REST_MINUTES) {
                         addBreach(`Rest Period Breach (Home Base): Only ${formatMinutesToHHMM(restDurationMinutes)} rest between duties on ${prevEntry.dateString} (debrief: ${prevEntry.debriefTime}) and ${currentEntry.dateString} (brief: ${currentEntry.briefTime}). Minimum ${HOME_BASE_MIN_REST_HOURS} hours required at Home Base.`);
                     }
                 } else {
-                    // This scenario is for rest periods when away from Home Base, or mixed (one at home, one away).
-                    // We'll report if it's less than 12 hours for information.
                     if (restDurationMinutes < HOME_BASE_MIN_REST_MINUTES) {
-                        addBreach(`Short Rest Period (Info): Only ${formatMinutesToHHMM(restDurationMinutes)} rest between duties on ${prevEntry.dateString} (debrief: ${prevEntry.debriefTime}) and ${currentEntry.dateString} (brief: ${currentEntry.briefTime}). This may be permissible if away from Home Base (e.g., 10-hour rule) or under specific FRMS limitations.`, true); // true for isInfo
+                        addBreach(`Short Rest Period (Info): Only ${formatMinutesToHHMM(restDurationMinutes)} rest between duties on ${prevEntry.dateString} (debrief: ${prevEntry.debriefTime}) and ${currentEntry.dateString} (brief: ${currentEntry.briefTime}). This may be permissible if away from Home Base (e.g., 10-hour rule) or under specific FRMS limitations.`, true);
                     }
                 }
             }
@@ -798,6 +745,14 @@
             document.getElementById('breachResults').style.display = 'block';
         }
 
+        // New functions for the modal/popover
+        function showBreachInfoModal() {
+            document.getElementById('breachInfoModal').style.display = 'flex'; // Use flex to center
+        }
+
+        function hideBreachInfoModal() {
+            document.getElementById('breachInfoModal').style.display = 'none';
+        }
 
         function generatePrintout() {
             let lines = document.getElementById('rosterInput').value.trim().split('\n');
