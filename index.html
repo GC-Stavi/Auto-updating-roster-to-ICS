@@ -74,18 +74,31 @@
             line-height: 1.5;
         }
 
+        /* Adjust button margins to prevent excessive spacing with flexbox */
         button {
-            margin: 0.5em 0.5em 0 0;
+            margin: 0 0.5em 0 0; /* Top, Right, Bottom, Left */
             padding: 0.6em 1.2em;
             font-size: 1em;
             cursor: pointer;
-            border-radius: 6px; /* Added for consistency */
-            border: 1px solid #ccc; /* Added for consistency */
-            background: #eee; /* Added for consistency */
+            border-radius: 6px;
+            border: 1px solid #ccc;
+            background: #eee;
         }
 
         button:hover {
-            background-color: #e0e0e0; /* Added hover effect */
+            background-color: #e0e0e0;
+        }
+
+        /* New style for the "Check for Roster Breaches" button */
+        .check-breaches-button {
+            background-color: #ffc107; /* A subtle yellow */
+            border-color: #ffc107;
+            color: #333; /* Darker text for contrast */
+        }
+
+        .check-breaches-button:hover {
+            background-color: #e0a800; /* Darker yellow on hover */
+            border-color: #e0a800;
         }
 
         table#printTable {
@@ -118,9 +131,9 @@
             border: 1px solid #ddd;
             background-color: #f9f9f9;
             border-radius: 5px;
-            max-height: 200px; /* Limit height for scroll if many breaches */
-            overflow-y: auto; /* Enable scrolling if content exceeds max-height */
-            display: none; /* Hidden by default, shown when results are available */
+            max-height: 200px;
+            overflow-y: auto;
+            display: none;
         }
 
         #breachResults h3 {
@@ -136,23 +149,32 @@
         #breachResults li {
             margin-bottom: 0.5em;
             font-weight: bold;
-            color: #d9534f; /* Red for breaches */
+            color: #d9534f;
         }
 
-        #breachResults li.info { /* Style for information messages */
-            color: #337ab7; /* Blue for info */
-            font-weight: normal; /* Less emphasis for info */
+        #breachResults li.info {
+            color: #337ab7;
+            font-weight: normal;
         }
 
         #breachResults li.no-breach {
-            color: #5cb85c; /* Green for no breaches */
+            color: #5cb85c;
         }
 
-        /* Info container for button and icon */
-        .button-group {
+        /* Button group for alignment */
+        .main-buttons-row {
+            display: flex;
+            justify-content: space-between; /* Pushes items to ends */
+            align-items: center;
+            flex-wrap: wrap; /* Allows wrapping on smaller screens */
+            margin-top: 0.5em;
+            margin-bottom: 0.5em; /* Add some space below the button row */
+        }
+
+        .left-buttons, .right-buttons {
             display: flex;
             align-items: center;
-            margin-top: 0.5em;
+            flex-wrap: wrap; /* Allow buttons to wrap within their group */
         }
 
         .info-button {
@@ -163,7 +185,9 @@
             border-radius: 6px;
             border: 1px solid #ccc;
             background: #eee;
+            /* Adjust margin for spacing within the right group */
             margin-left: 0.5em; /* Space between breach button and info button */
+            margin-right: 0; /* Reset right margin as it's the last element */
         }
 
         .info-button:hover {
@@ -177,11 +201,11 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent black overlay */
+            background-color: rgba(0, 0, 0, 0.5);
             display: flex;
             justify-content: center;
             align-items: center;
-            z-index: 1000; /* Ensure it's on top */
+            z-index: 1000;
         }
 
         .modal-content {
@@ -189,10 +213,10 @@
             padding: 20px;
             border-radius: 8px;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-            max-width: 500px; /* Max width for the popover */
-            width: 90%; /* Responsive width */
-            max-height: 80vh; /* Max height to prevent overflow on small screens */
-            overflow-y: auto; /* Enable scrolling if content is too long */
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
             position: relative;
         }
 
@@ -204,14 +228,14 @@
         }
 
         .modal-content ul {
-            list-style-type: disc; /* Use standard bullets */
+            list-style-type: disc;
             padding-left: 20px;
             margin-bottom: 15px;
         }
 
         .modal-content li {
             margin-bottom: 5px;
-            font-weight: normal; /* Override bold from breach list */
+            font-weight: normal;
             color: #555;
         }
 
@@ -232,11 +256,78 @@
             color: #333;
         }
 
-        /* Dark mode styles for modal */
-        body.dark-mode .info-button {
+        /* Dark mode styles */
+        body.dark-mode {
+            background: #121212;
+            color: #f0f0f0;
+        }
+
+        body.dark-mode .container {
+            background: #1e1e1e;
+            box-shadow: 0 0 10px #000;
+        }
+
+        body.dark-mode textarea {
+            background: #2a2a2a;
+            color: #f0f0f0;
+            border: 1px solid #555;
+        }
+
+        body.dark-mode button,
+        body.dark-mode .dark-toggle-btn {
             background: #333;
             color: #fff;
             border: 1px solid #555;
+        }
+
+        body.dark-mode button:hover {
+            background-color: #555;
+        }
+
+        body.dark-mode .check-breaches-button {
+            background-color: #cc9900; /* Darker yellow for dark mode */
+            border-color: #cc9900;
+            color: #f0f0f0;
+        }
+
+        body.dark-mode .check-breaches-button:hover {
+            background-color: #a67c00;
+            border-color: #a67c00;
+        }
+
+        body.dark-mode table#printTable {
+            background: #1e1e1e;
+            color: #f0f0f0;
+        }
+
+        body.dark-mode table#printTable th,
+        body.dark-mode table#printTable td {
+            border-color: #555;
+        }
+
+        body.dark-mode .weekend-row {
+            background-color: #2f2f2f !important;
+        }
+
+        body.dark-mode #breachResults {
+            background-color: #2a2a2a;
+            border-color: #555;
+        }
+
+        body.dark-mode #breachResults h3 {
+            color: #f0f0f0;
+        }
+
+        body.dark-mode #breachResults li {
+            color: #ff9999;
+        }
+        body.dark-mode #breachResults li.info {
+            color: #99bbff;
+        }
+        body.dark-mode .info-button {
+            background: #333;
+            border-color: #555;
+            color: #fff;
         }
         body.dark-mode .info-button:hover {
             background-color: #555;
@@ -244,7 +335,6 @@
         body.dark-mode .modal-content {
             background-color: #1e1e1e;
             color: #f0f0f0;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
         }
         body.dark-mode .modal-content h4 {
             color: #f0f0f0;
@@ -261,7 +351,7 @@
 
         @media print {
             .modal-overlay {
-                display: none !important; /* Hide modal for printing */
+                display: none !important;
             }
         }
     </style>
@@ -278,12 +368,16 @@
 
     <div class="container">
         <textarea id="rosterInput" placeholder="Paste your roster here..."></textarea><br/>
-        <button onclick="generatePrintout()">Print This Page</button>
-        <button onclick="generateICS()">Download ICS File</button>
         
-        <div class="button-group">
-            <button onclick="checkForBreaches()">Check for Roster Breaches</button>
-            <button class="info-button" onclick="showBreachInfoModal()">?</button>
+        <div class="main-buttons-row">
+            <div class="left-buttons">
+                <button onclick="generatePrintout()">Print This Page</button>
+                <button onclick="generateICS()">Download ICS File</button>
+            </div>
+            <div class="right-buttons">
+                <button onclick="checkForBreaches()" class="check-breaches-button">Check for Roster Breaches</button>
+                <button class="info-button" onclick="showBreachInfoModal()">?</button>
+            </div>
         </div>
 
         <div id="breachResults">
@@ -325,6 +419,17 @@
                 <li>**Rest Periods (Home Base)**: Less than 12 hours rest between duties when both duties are at Home Base.</li>
                 <li>**Short Rest Periods (Info)**: Less than 12 hours rest between duties when one or both duties are away from Home Base. This is for information only as it might be permissible under specific FRMS rules (e.g., 10-hour rule when away).</li>
             </ul>
+            <p>
+                The tool **does NOT** currently check for:
+                <ul>
+                    <li>**Grey Day Directed Work**: (e.g., being directed to work on a Grey Day outside of assessment/remedial training, or if you have nominated to work).</li>
+                    <li>Specific RDO and Grey Day buffer periods (e.g., 36-hour for 1 RDO, 60-hour for 2 RDOs, etc.).</li>
+                    <li>Any Flight Duty Period (FDP) or Duty Time limitations based on CAO 48 or FRMS.</li>
+                    <li>Maximum consecutive nights away from Home Base.</li>
+                    <li>Any specific Rest Periods related to Standby.</li>
+                    <li>Any other complex rostering rules or buffers.</li>
+                </ul>
+            </p>
             <p>
                 *Note: This tool provides general guidance. Always refer to the official EA document and your company's rostering policy for definitive interpretation.*
             </p>
@@ -747,7 +852,7 @@
 
         // New functions for the modal/popover
         function showBreachInfoModal() {
-            document.getElementById('breachInfoModal').style.display = 'flex'; // Use flex to center
+            document.getElementById('breachInfoModal').style.display = 'flex';
         }
 
         function hideBreachInfoModal() {
