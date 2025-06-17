@@ -5,15 +5,92 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Roster to ICS Exporter</title>
   <style>
-    body { font-family: sans-serif; margin: 1em; background: #f8f8f8; }
-    textarea { width: 100%; height: 300px; font-family: monospace; padding: 1em; }
-    button { margin: 0.5em 0.5em 0 0; padding: 0.6em 1.2em; font-size: 1em; cursor: pointer; }
-    .container { max-width: 1000px; margin: auto; background: #fff; padding: 1em; box-shadow: 0 0 10px #ccc; border-radius: 8px; }
+    * { box-sizing: border-box; }
 
-    table#printTable { width: 100%; border-collapse: collapse; margin-top: 1em; display: none; }
+    body {
+      font-family: sans-serif;
+      margin: 1em;
+      background: #f8f8f8;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    .logo {
+      text-align: center;
+      margin-bottom: 10px;
+    }
+
+    .logo img {
+      max-width: 180px;
+      height: auto;
+      margin-top: 10px;
+      margin-bottom: 10px;
+      box-shadow: 0 0 8px rgba(0,0,0,0.05);
+    }
+
+    .top-controls {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+    }
+
+    .dark-toggle-btn {
+      padding: 0.6em 1em;
+      font-size: 1em;
+      font-weight: bold;
+      border: 1px solid #ccc;
+      background: #eee;
+      cursor: pointer;
+      border-radius: 6px;
+    }
+
+    hr.divider {
+      max-width: 200px;
+      margin: 0 auto 20px auto;
+      border: 0;
+      border-top: 1px solid #ccc;
+    }
+
+    .container {
+      max-width: 1000px;
+      margin: auto;
+      background: #fff;
+      padding: 1em;
+      box-shadow: 0 0 10px #ccc;
+      border-radius: 8px;
+    }
+
+    textarea {
+      width: 100%;
+      height: 350px;
+      max-width: 100%;
+      display: block;
+      font-family: monospace;
+      padding: 1em;
+      border: 1px solid #ccc;
+      resize: vertical;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    button {
+      margin: 0.5em 0.5em 0 0;
+      padding: 0.6em 1.2em;
+      font-size: 1em;
+      cursor: pointer;
+    }
+
+    table#printTable {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 1em;
+      display: none;
+    }
+
     table#printTable, table#printTable th, table#printTable td {
       border: 1px solid #333;
     }
+
     table#printTable th, table#printTable td {
       padding: 2px 4px;
       font-size: 9pt;
@@ -22,15 +99,85 @@
       white-space: pre-wrap;
     }
 
+    .weekend-row {
+      background-color: #e0e0e0 !important;
+    }
+
     @media print {
-      body { background: white; margin: 0; }
-      .container { box-shadow: none; padding: 0; max-width: 100%; }
-      textarea, button { display: none; }
-      table#printTable { display: table; }
+      .logo, .top-controls, textarea, button, hr.divider {
+        display: none !important;
+      }
+
+      body {
+        background: white;
+        margin: 0;
+      }
+
+      .container {
+        box-shadow: none;
+        padding: 0;
+        max-width: 100%;
+      }
+
+      table#printTable {
+        display: table;
+      }
+
+      .weekend-row {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+        background-color: #e0e0e0 !important;
+      }
+    }
+
+    body.dark-mode {
+      background: #121212;
+      color: #f0f0f0;
+    }
+
+    body.dark-mode .container {
+      background: #1e1e1e;
+      box-shadow: 0 0 10px #000;
+    }
+
+    body.dark-mode textarea {
+      background: #2a2a2a;
+      color: #f0f0f0;
+      border: 1px solid #555;
+    }
+
+    body.dark-mode button,
+    body.dark-mode .dark-toggle-btn {
+      background: #333;
+      color: #fff;
+      border: 1px solid #555;
+    }
+
+    body.dark-mode table#printTable {
+      background: #1e1e1e;
+      color: #f0f0f0;
+    }
+
+    body.dark-mode table#printTable th,
+    body.dark-mode table#printTable td {
+      border-color: #555;
+    }
+
+    body.dark-mode .weekend-row {
+      background-color: #2f2f2f !important;
     }
   </style>
 </head>
 <body>
+  <div class="logo">
+    <img src="alliance-logo.png" alt="Alliance Airlines Logo">
+  </div>
+  <hr class="divider">
+
+  <div class="top-controls">
+    <button class="dark-toggle-btn" onclick="toggleDarkMode()" id="darkModeBtn">Switch to Dark Mode</button>
+  </div>
+
   <div class="container">
     <textarea id="rosterInput" placeholder="Paste your roster here..."></textarea><br/>
     <button onclick="generatePrintout()">Print This Page</button>
@@ -56,17 +203,48 @@
   </div>
 
   <script>
-    function pad(n) { return n.toString().padStart(2, '0'); }
+    function toggleDarkMode() {
+      const body = document.body;
+      const btn = document.getElementById('darkModeBtn');
+      const isDark = body.classList.toggle('dark-mode');
+      btn.textContent = isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode';
+      localStorage.setItem('darkMode', isDark ? 'dark' : 'light');
+    }
+
+    window.onload = function () {
+      const saved = localStorage.getItem('darkMode');
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const shouldDark = saved === 'dark' || (!saved && prefersDark);
+      if (shouldDark) {
+        document.body.classList.add('dark-mode');
+        document.getElementById('darkModeBtn').textContent = 'Switch to Light Mode';
+      }
+    };
+
+    function pad(n) {
+      return n.toString().padStart(2, '0');
+    }
+
+    function cleanHeaderLines(lines) {
+      const knownHeaders = [
+        'Duty Date\tDuty\tBrief Time\tDebrief Time\tLayover\tDetails\tDuty hours\tFlight hours\tPax Hours\tCredit Hours',
+        'Duty\tDate\tDuty\tBrief\tTime\tDebrief\tTime\tLayover'
+      ];
+      return lines.filter(line =>
+        !knownHeaders.some(h =>
+          line.replace(/\s+/g, '').includes(h.replace(/\s+/g, ''))
+        )
+      );
+    }
 
     function generateICS() {
-      const input = document.getElementById('rosterInput').value.trim();
-      if (!input) return alert("Paste your roster first.");
+      let lines = document.getElementById('rosterInput').value.trim().split('\n');
+      if (!lines.length) return alert("Paste your roster first.");
+      lines = cleanHeaderLines(lines);
 
-      const lines = input.split('\n');
       const newBlockRegex = /^\d{2}\/\w{3}\/\d{4}[ \t]/;
       const timeSummaryRegex = /^\d{1,2}:\d{2}[ \t]+\d{1,2}:\d{2}[ \t]+\d{1,2}:\d{2}[ \t]+\d{1,2}:\d{2}$/;
-      let buffer = [];
-      let events = [];
+      let buffer = [], events = [];
 
       function flushRow() {
         if (!buffer.length) return;
@@ -84,21 +262,23 @@
         row[5] = buffer.slice(1).join('\n');
         for (let i = 0; i < summary.length; i++) row[6 + i] = summary[i];
 
-        const dateStr = row[0];
+        const [dd, mon, yyyy] = row[0].split(/[\/\s]/);
+        const months = {
+          Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5,
+          Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11
+        };
+        const d = new Date(yyyy, months[mon], dd);
+
         const brief = row[2] || '00:00';
         const debrief = row[3] || '00:00';
         const duty = row[1];
         const details = row[5].replace(/\n/g, ' | ');
-        const [dd, mon, yyyy] = dateStr.split(/[\/\s]/);
-        const months = {Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11};
-        const d = new Date(yyyy, months[mon], dd);
-
         const formatTime = (t) => t.replace(/:/g, '') + '00';
 
         const dtStart = yyyy + pad(d.getMonth() + 1) + pad(d.getDate()) + 'T' + formatTime(brief);
         const dtEnd = yyyy + pad(d.getMonth() + 1) + pad(d.getDate()) + 'T' + formatTime(debrief);
 
-        events.push(`BEGIN:VEVENT\nSUMMARY:${duty} ${details}\nDTSTART;TZID=Australia/Brisbane:${dtStart}\nDTEND;TZID=Australia/Brisbane:${dtEnd}\nDESCRIPTION:Brief: ${brief} | ${details}\nUID:roster-${dtStart}@roster.local\nDTSTAMP:${dtStart}Z\nEND:VEVENT`);
+        events.push(`BEGIN:VEVENT\nSUMMARY:${duty} ${brief} ${details}\nDTSTART;TZID=Australia/Brisbane:${dtStart}\nDTEND;TZID=Australia/Brisbane:${dtEnd}\nDESCRIPTION:Brief: ${brief} | ${details}\nUID:roster-${dtStart}@roster.local\nDTSTAMP:${dtStart}Z\nEND:VEVENT`);
         buffer = [];
       }
 
@@ -121,18 +301,29 @@
     }
 
     function generatePrintout() {
-      const input = document.getElementById('rosterInput').value.trim();
-      if (!input) return alert("Paste your roster first.");
+      let lines = document.getElementById('rosterInput').value.trim().split('\n');
+      if (!lines.length) return alert("Paste your roster first.");
+      lines = cleanHeaderLines(lines);
 
-      const lines = input.split('\n');
       const tbody = document.getElementById('printTableBody');
       const table = document.getElementById('printTable');
       tbody.innerHTML = '';
 
       const newBlockRegex = /^\d{2}\/\w{3}\/\d{4}[ \t]/;
       const timeSummaryRegex = /^\d{1,2}:\d{2}[ \t]+\d{1,2}:\d{2}[ \t]+\d{1,2}:\d{2}[ \t]+\d{1,2}:\d{2}$/;
-
       let buffer = [];
+      let totals = [0, 0, 0, 0];
+
+      function parseMinutes(time) {
+        const [h, m] = time.split(':').map(Number);
+        return h * 60 + m;
+      }
+
+      function formatMinutes(mins) {
+        const h = Math.floor(mins / 60);
+        const m = mins % 60;
+        return `${h}:${m.toString().padStart(2, '0')}`;
+      }
 
       function flushRow() {
         if (!buffer.length) return;
@@ -140,6 +331,17 @@
         const row = Array(10).fill('');
         const start = buffer[0].split(/\t| {2,}/);
         for (let i = 0; i < start.length && i < 5; i++) row[i] = start[i];
+
+        const [dd, mon, yyyy] = row[0].split(/[\/\s]/);
+        const months = {
+          Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5,
+          Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11
+        };
+        const d = new Date(yyyy, months[mon], dd);
+        const dayOfWeek = d.toLocaleDateString('en-AU', { weekday: 'short' });
+        const fullDay = d.toLocaleDateString('en-AU', { weekday: 'long' });
+        row[0] = `${dayOfWeek} ${row[0]}`;
+        const isWeekend = (fullDay === 'Saturday' || fullDay === 'Sunday');
 
         const summaryIndex = buffer.findIndex(l => timeSummaryRegex.test(l));
         let summary = [];
@@ -151,7 +353,14 @@
         row[5] = buffer.slice(1).join('\n');
         for (let i = 0; i < summary.length; i++) row[6 + i] = summary[i];
 
+        for (let i = 6; i <= 9; i++) {
+          if (row[i].match(/^\d{1,2}:\d{2}$/)) {
+            totals[i - 6] += parseMinutes(row[i]);
+          }
+        }
+
         const tr = document.createElement('tr');
+        if (isWeekend) tr.classList.add('weekend-row');
         row.forEach(val => {
           const td = document.createElement('td');
           td.textContent = val;
@@ -167,9 +376,19 @@
       });
       flushRow();
 
+      const summaryRow = document.createElement('tr');
+      for (let i = 0; i < 10; i++) {
+        const td = document.createElement('td');
+        if (i === 0) td.textContent = 'TOTAL';
+        if (i >= 6) td.textContent = formatMinutes(totals[i - 6]);
+        summaryRow.appendChild(td);
+      }
+      summaryRow.style.fontWeight = 'bold';
+      summaryRow.style.borderTop = '2px solid #000';
+      tbody.appendChild(summaryRow);
+
       table.style.display = 'table';
       window.print();
-      table.style.display = 'none';
     }
   </script>
 </body>
