@@ -458,15 +458,13 @@
                 breachList.appendChild(li);
             }
 
-            // --- Implement ONLY Early Starts Breach Check (Consecutive Days with Breach) ---
-
+            // --- Early Starts Breach Check (Consecutive Days with Breach) ---
             const earlyStartsThreshold = 3; // Max allowed is 3, so > 3 is a breach
             const SIX_AM_IN_MINUTES = parseTime('06:00');
 
             let consecutiveEarlyStarts = 0;
-            let breachStartDate = null;
+            let earlyStartBreachStartDate = null;
 
-            // Iterate through the roster to find consecutive early starts
             for (let i = 0; i < roster.length; i++) {
                 const currentEntry = roster[i];
                 const currentBriefTimeMinutes = parseTime(currentEntry.briefTime);
@@ -480,26 +478,55 @@
                 );
 
                 if (isActualDutyStartCandidate && currentBriefTimeMinutes < SIX_AM_IN_MINUTES) {
-                    // This is an early start duty
                     consecutiveEarlyStarts++;
-                    if (breachStartDate === null) {
-                        breachStartDate = currentEntry.dateString;
+                    if (earlyStartBreachStartDate === null) {
+                        earlyStartBreachStartDate = currentEntry.dateString;
                     }
                 } else {
-                    // Not an early start duty, check if a breach ended
                     if (consecutiveEarlyStarts > earlyStartsThreshold) {
-                        // Breach occurred for a consecutive block of days
-                        addBreach(`Early Starts Breach: Started on ${breachStartDate}, with ${consecutiveEarlyStarts} consecutive duties starting before 06:00 (more than ${earlyStartsThreshold} allowed).`);
+                        addBreach(`Early Starts Breach: Started on ${earlyStartBreachStartDate}, with ${consecutiveEarlyStarts} consecutive duties starting before 06:00 (more than ${earlyStartsThreshold} allowed).`);
                     }
-                    // Reset for next sequence
                     consecutiveEarlyStarts = 0;
-                    breachStartDate = null;
+                    earlyStartBreachStartDate = null;
                 }
             }
-
-            // After the loop, check if there's an ongoing breach at the end of the roster
             if (consecutiveEarlyStarts > earlyStartsThreshold) {
-                addBreach(`Early Starts Breach: Started on ${breachStartDate}, with ${consecutiveEarlyStarts} consecutive duties starting before 06:00 (more than ${earlyStartsThreshold} allowed).`);
+                addBreach(`Early Starts Breach: Started on ${earlyStartBreachStartDate}, with ${consecutiveEarlyStarts} consecutive duties starting before 06:00 (more than ${earlyStartsThreshold} allowed).`);
+            }
+
+            // --- Minimum RDOs Check ---
+            const RDO_MINIMUM = 8; // Minimum RDOs required per roster period 
+            const ROSTER_PERIOD_DAYS = 28; // A Roster Period is 28 days 
+
+            // To calculate RDOs, we need to determine the start and end of the roster period
+            // and then count RDOs within it. Assuming the roster data provided is for *one* roster period.
+            // If it can span multiple partial roster periods, this logic would need to be adjusted.
+
+            if (roster.length > 0) {
+                const firstDate = roster[0].date;
+                const lastDate = roster[roster.length - 1].date;
+
+                // Check if the roster roughly covers a 28-day period for this check to be relevant
+                const rosterDurationMs = lastDate.getTime() - firstDate.getTime();
+                const rosterDurationDays = rosterDurationMs / (1000 * 60 * 60 * 24);
+
+                // We'll consider a roster valid for this check if it's close to 28 days
+                // This might need adjustment if users paste shorter/longer roster segments
+                if (rosterDurationDays >= 27 && rosterDurationDays <= 29) { // Allowing for slight variations
+                    let rdoCount = 0;
+                    for (const entry of roster) {
+                        if (entry.dutyType.toUpperCase().includes('RDO')) {
+                            rdoCount++;
+                        }
+                    }
+
+                    if (rdoCount < RDO_MINIMUM) {
+                        addBreach(`RDO Breach: Only ${rdoCount} RDOs rostered in the period from ${firstDate.toLocaleDateString('en-AU')} to ${lastDate.toLocaleDateString('en-AU')}. A minimum of ${RDO_MINIMUM} RDOs are required.`);
+                    }
+                } else {
+                    // Optionally, you can add a message if the roster length isn't typical for an RDO check
+                    // addBreach(`Note: RDO count check skipped as the roster duration (${Math.round(rosterDurationDays)} days) does not appear to be a standard 28-day roster period.`);
+                }
             }
 
 
