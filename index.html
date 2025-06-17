@@ -148,8 +148,73 @@
             color: #5cb85c; /* Green for no breaches */
         }
 
+        /* Styles for info icon and tooltip */
+        .info-container {
+            display: inline-flex; /* Allows icon and button to sit next to each other */
+            align-items: center;
+            position: relative; /* For tooltip positioning */
+        }
+
+        .info-icon {
+            margin-left: 5px; /* Space between button and icon */
+            cursor: help; /* Changes cursor to a question mark */
+            font-size: 1.2em; /* Makes the 'i' a bit larger */
+            font-weight: bold;
+            color: #555;
+            background-color: #eee; /* Matches button background */
+            border: 1px solid #ccc; /* Matches button border */
+            border-radius: 50%; /* Makes it a circle */
+            width: 24px; /* Fixed width */
+            height: 24px; /* Fixed height */
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            line-height: 1; /* Aligns 'i' vertically */
+        }
+
+        .info-icon:hover {
+            background-color: #e0e0e0; /* Matches button hover */
+        }
+
+        .tooltip-text {
+            visibility: hidden;
+            width: 250px; /* Adjust width as needed */
+            background-color: #555;
+            color: #fff;
+            text-align: left;
+            border-radius: 6px;
+            padding: 10px;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%; /* Position above the icon */
+            left: 50%;
+            margin-left: -125px; /* Center the tooltip */
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-size: 0.85em; /* Smaller font for tooltip */
+            font-weight: normal;
+            line-height: 1.4;
+        }
+
+        .info-icon:hover .tooltip-text {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        /* Tooltip arrow */
+        .tooltip-text::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: #555 transparent transparent transparent;
+        }
+
         @media print {
-            .logo, .top-controls, textarea, button, hr.divider, #breachResults {
+            .logo, .top-controls, textarea, button, hr.divider, #breachResults, .info-container { /* Hide info elements on print */
                 display: none !important;
             }
 
@@ -232,6 +297,21 @@
         body.dark-mode #breachResults li.info {
             color: #99bbff; /* Lighter blue for dark mode info */
         }
+        body.dark-mode .info-icon {
+            background-color: #333;
+            border-color: #555;
+            color: #fff;
+        }
+        body.dark-mode .info-icon:hover {
+            background-color: #555;
+        }
+        body.dark-mode .tooltip-text {
+            background-color: #444;
+            color: #eee;
+        }
+        body.dark-mode .tooltip-text::after {
+            border-color: #444 transparent transparent transparent;
+        }
     </style>
 </head>
 <body>
@@ -248,7 +328,25 @@
         <textarea id="rosterInput" placeholder="Paste your roster here..."></textarea><br/>
         <button onclick="generatePrintout()">Print This Page</button>
         <button onclick="generateICS()">Download ICS File</button>
-        <button onclick="checkForBreaches()">Check for Roster Breaches</button>
+        <div class="info-container">
+            <button onclick="checkForBreaches()">Check for Roster Breaches</button>
+            <div class="info-icon">
+                i
+                <span class="tooltip-text">
+                    These checks are based on the **Alliance Group (Qld Pilots) EA 2024**.
+                    <br><br>
+                    Current checks include:
+                    <ul>
+                        <li>**Early Starts**: More than 3 consecutive starts before 06:00.</li>
+                        <li>**Minimum RDOs**: Fewer than 8 Rostered Days Off in a 28-day roster period.</li>
+                        <li>**Weekend Off**: No full Saturday and Sunday RDO block in a 28-day roster period.</li>
+                        <li>**Consecutive Duty Tours**: Two 6-day (or more) duty tours without a minimum of 2 consecutive days off in between.</li>
+                        <li>**Rest Periods**: Less than 12 hours rest between duties at Home Base (breach). Also identifies shorter rest periods away from Home Base (info).</li>
+                    </ul>
+                </span>
+            </div>
+        </div>
+
         <div id="breachResults">
             <h3>Roster Breach Check Results:</h3>
             <ul id="breachList">
@@ -399,10 +497,10 @@
                 const initialSplit = buffer[0].split(/\t| {2,}/);
                 for (let i = 0; i < initialSplit.length && i < 5; i++) rowData[i] = initialSplit[i];
 
-                const [dayStr, monStr, yearStr] = rowData[0].split(/[\/\s]/);
+                const [dayStr, monStr, yyyy] = rowData[0].split(/[\/\s]/);
                 let currentYear = new Date().getFullYear();
-                if (yearStr && !isNaN(Number(yearStr))) {
-                     currentYear = Number(yearStr);
+                if (yyyy && !isNaN(Number(yyyy))) {
+                     currentYear = Number(yyyy);
                 }
 
                 const months = {
@@ -412,13 +510,32 @@
                 const date = new Date(currentYear, months[monStr], Number(dayStr));
 
                 let summaryParts = [];
-                const summaryIndex = buffer.findIndex(l => timeSummaryRegex.test(l));
-                if (summaryIndex !== -1) {
-                    summaryParts = buffer[summaryIndex].split(/\t| {2,}/);
-                    buffer.splice(summaryIndex, 1);
+                // Collect all lines after the initial line until a new block or a summary line
+                let detailsLines = [];
+                let foundSummary = false;
+                for (let k = 1; k < buffer.length; k++) {
+                    if (timeSummaryRegex.test(buffer[k])) {
+                        summaryParts = buffer[k].split(/\t| {2,}/);
+                        foundSummary = true;
+                        break; // Stop collecting details once summary is found
+                    } else {
+                        detailsLines.push(buffer[k]);
+                    }
                 }
+                rowData[5] = detailsLines.join('\n'); // Join all lines for 'details'
 
-                rowData[5] = buffer.slice(1).join('\n');
+                // If summary wasn't found in buffer, or was part of the very first line (unlikely for this format)
+                // then summaryParts remain empty, and default values will be used.
+                // Re-extract the last 4 elements from the last details line if it looks like a summary and wasn't found explicitly
+                if (!foundSummary && detailsLines.length > 0) {
+                     const lastDetailLine = detailsLines[detailsLines.length - 1];
+                     if (timeSummaryRegex.test(lastDetailLine)) {
+                        summaryParts = lastDetailLine.split(/\t| {2,}/);
+                        detailsLines.pop(); // Remove it from details as it's the summary
+                        rowData[5] = detailsLines.join('\n');
+                     }
+                }
+                
                 for (let i = 0; i < summaryParts.length; i++) rowData[6 + i] = summaryParts[i];
 
                 rosterEntries.push({
@@ -621,14 +738,13 @@
             // --- Rest Periods Between Duty Periods Check ---
             const HOME_BASE_MIN_REST_HOURS = 12; // 12 hours minimum rest at Home Base
             const HOME_BASE_MIN_REST_MINUTES = HOME_BASE_MIN_REST_HOURS * 60;
-            const AWAY_BASE_COMMON_REST_HOURS = 10; // Common minimum rest when away from home base
-            const AWAY_BASE_COMMON_REST_MINUTES = AWAY_BASE_COMMON_REST_HOURS * 60;
+            // AWAY_BASE_COMMON_REST_HOURS (not explicitly used as a threshold but as a reference for info)
 
             for (let i = 0; i < roster.length - 1; i++) {
                 const prevEntry = roster[i];
                 const currentEntry = roster[i + 1];
 
-                // Skip if current entry is an RDO, Grey Day, SBY, or Leave as it's not a direct duty period
+                // Skip if current entry is an RDO, Grey Day, SBY, or Leave as it's not a direct duty period following another duty
                 const isCurrentEntryDuty = !(
                     currentEntry.dutyType.toUpperCase().includes('RDO') ||
                     currentEntry.dutyType.toUpperCase().includes('GREY DAY') ||
@@ -636,39 +752,36 @@
                     currentEntry.dutyType.toUpperCase().includes('LEAVE')
                 );
 
-                // Skip if previous entry had no debrief time or current had no brief time (e.g. SBY, RDO, Leave with no assigned times)
+                // Skip if previous entry was not a duty with a debrief time, or current has no brief time, or current is not a duty
                 if (isNaN(parseTime(prevEntry.debriefTime)) || isNaN(parseTime(currentEntry.briefTime)) || !isCurrentEntryDuty) {
                     continue;
                 }
 
-                // Calculate time difference correctly, potentially spanning midnight
                 const prevDebriefMinutes = parseTime(prevEntry.debriefTime);
                 const currentBriefMinutes = parseTime(currentEntry.briefTime);
 
                 let restDurationMinutes;
-                // If brief time is earlier than debrief time, it implies the next day
                 if (currentBriefMinutes >= prevDebriefMinutes) {
                     restDurationMinutes = currentBriefMinutes - prevDebriefMinutes;
                 } else {
-                    // Spans midnight: (minutes remaining in prev day) + (minutes from start of next day)
                     restDurationMinutes = (24 * 60 - prevDebriefMinutes) + currentBriefMinutes;
                 }
                 
-                // Determine if both duties are at Home Base based on the 'Layover' field
-                // If 'Layover' is empty, we assume it's at Home Base.
+                // Determine if both duties are at Home Base based on the 'Layover' field.
+                // An empty layover field implies Home Base.
                 const isPrevDutyAtHomeBase = prevEntry.layover.trim() === '';
                 const isCurrentDutyAtHomeBase = currentEntry.layover.trim() === '';
 
                 if (isPrevDutyAtHomeBase && isCurrentDutyAtHomeBase) {
                     // Check for Home Base rest period breach
                     if (restDurationMinutes < HOME_BASE_MIN_REST_MINUTES) {
-                        addBreach(`Rest Period Breach (Home Base): Only ${formatMinutesToHHMM(restDurationMinutes)} rest between duties on ${prevEntry.dateString} and ${currentEntry.dateString}. Minimum ${HOME_BASE_MIN_REST_HOURS} hours required at Home Base.`);
+                        addBreach(`Rest Period Breach (Home Base): Only ${formatMinutesToHHMM(restDurationMinutes)} rest between duties on ${prevEntry.dateString} (debrief: ${prevEntry.debriefTime}) and ${currentEntry.dateString} (brief: ${currentEntry.briefTime}). Minimum ${HOME_BASE_MIN_REST_HOURS} hours required at Home Base.`);
                     }
                 } else {
-                    // This scenario is for rest periods when away from Home Base, or mixed.
+                    // This scenario is for rest periods when away from Home Base, or mixed (one at home, one away).
                     // We'll report if it's less than 12 hours for information.
                     if (restDurationMinutes < HOME_BASE_MIN_REST_MINUTES) {
-                        addBreach(`Short Rest Period: Only ${formatMinutesToHHMM(restDurationMinutes)} rest between duties on ${prevEntry.dateString} and ${currentEntry.dateString}. This may be permissible if away from Home Base (e.g., 10-hour rule) or under specific FRMS limitations.`, true); // true for isInfo
+                        addBreach(`Short Rest Period (Info): Only ${formatMinutesToHHMM(restDurationMinutes)} rest between duties on ${prevEntry.dateString} (debrief: ${prevEntry.debriefTime}) and ${currentEntry.dateString} (brief: ${currentEntry.briefTime}). This may be permissible if away from Home Base (e.g., 10-hour rule) or under specific FRMS limitations.`, true); // true for isInfo
                     }
                 }
             }
@@ -733,15 +846,30 @@
                 row[0] = `${dayOfWeek} ${row[0]}`;
                 const isWeekend = (fullDay === 'Saturday' || fullDay === 'Sunday');
 
-                const summaryIndex = buffer.findIndex(l => timeSummaryRegex.test(l));
-                let summary = [];
-                if (summaryIndex !== -1) {
-                    summary = buffer[summaryIndex].split(/\t| {2,}/);
-                    buffer.splice(summaryIndex, 1);
+                let summaryParts = [];
+                let detailsLines = [];
+                let foundSummary = false;
+                for (let k = 1; k < buffer.length; k++) {
+                    if (timeSummaryRegex.test(buffer[k])) {
+                        summaryParts = buffer[k].split(/\t| {2,}/);
+                        foundSummary = true;
+                        break;
+                    } else {
+                        detailsLines.push(buffer[k]);
+                    }
+                }
+                row[5] = detailsLines.join('\n');
+
+                if (!foundSummary && detailsLines.length > 0) {
+                     const lastDetailLine = detailsLines[detailsLines.length - 1];
+                     if (timeSummaryRegex.test(lastDetailLine)) {
+                        summaryParts = lastDetailLine.split(/\t| {2,}/);
+                        detailsLines.pop();
+                        row[5] = detailsLines.join('\n');
+                     }
                 }
 
-                row[5] = buffer.slice(1).join('\n');
-                for (let i = 0; i < summary.length; i++) row[6 + i] = summary[i];
+                for (let i = 0; i < summaryParts.length; i++) row[6 + i] = summaryParts[i];
 
                 for (let i = 6; i <= 9; i++) {
                     if (row[i].match(/^\d{1,2}:\d{2}$/)) {
