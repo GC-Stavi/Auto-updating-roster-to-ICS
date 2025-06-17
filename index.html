@@ -111,6 +111,7 @@
             background-color: #e0e0e0 !important;
         }
 
+        /* Styles for breach results display */
         #breachResults {
             margin-top: 1em;
             padding: 1em;
@@ -239,8 +240,7 @@
         <textarea id="rosterInput" placeholder="Paste your roster here..."></textarea><br/>
         <button onclick="generatePrintout()">Print This Page</button>
         <button onclick="generateICS()">Download ICS File</button>
-        <button onclick="checkForBreaches()">Check for Roster Breaches</button> <div id="breachResults">
-            <h3>Roster Breach Check Results:</h3>
+        <button onclick="checkForBreaches()">Check for Roster Breaches</button> <div id="breachResults"> <h3>Roster Breach Check Results:</h3>
             <ul id="breachList">
                 </ul>
         </div>
@@ -290,7 +290,7 @@
         function cleanHeaderLines(lines) {
             const knownHeaders = [
                 'Duty Date\tDuty\tBrief Time\tDebrief Time\tLayover\tDetails\tDuty hours\tFlight hours\tPax Hours\tCredit Hours',
-                'Duty	Date	Duty	Brief	Time	Debrief	Time	Layover' // Added the one that sometimes appears with more spaces
+                'Duty	Date	Duty	Brief	Time	Debrief	Time	Layover'
             ];
             return lines.filter(line =>
                 !knownHeaders.some(h =>
@@ -319,12 +319,12 @@
                     Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5,
                     Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11
                 };
-                const d = new Date(Number(yyyy), months[mon], Number(dd)); // Ensure year is number
+                const d = new Date(yyyy, months[mon], dd);
 
                 const brief = row[2] || '00:00';
                 const debrief = row[3] || '00:00';
                 const duty = row[1];
-                const details = buffer.slice(1).join(' | '); // Use buffer.slice(1) to get all detail lines
+                const details = row[5].replace(/\n/g, ' | ');
                 const formatTime = (t) => t.replace(/:/g, '') + '00';
 
                 const dtStart = yyyy + pad(d.getMonth() + 1) + pad(d.getDate()) + 'T' + formatTime(brief);
@@ -352,7 +352,7 @@
             document.body.removeChild(a);
         }
 
-        // --- Start of new breach checking functionality ---
+        // --- NEW BREACH CHECKING FUNCTIONALITY ---
 
         function parseTime(timeStr) {
             // Handles cases where time might be missing or invalid
@@ -465,142 +465,11 @@
                 breachList.appendChild(li);
             }
 
-            // --- Implement Breach Checks ---
+            // --- Implement ONLY Early Starts Breach Check ---
 
-            // Current date context for phased RDO/Grey Day rules
-            // NOTE: For a real-world application, "Commencement Date" and "Additional RDO Date"
-            // should be configured accurately, perhaps as constants.
-            // Using a fixed current date for testing this specific roster input.
-            const today = new Date('2025-06-17T12:00:00'); // Set a fixed date for consistent testing
-            const commDate = new Date('2025-03-14T00:00:00');
-            const firstGreyDayImplDate = new Date('2025-05-26T00:00:00');
-            const secondGreyDayImplDate = new Date('2025-08-18T00:00:00');
-
-            let requiredRDOs = 8;
-            let requiredGreyDays = 0;
-
-            if (today >= firstGreyDayImplDate && today < secondGreyDayImplDate) {
-                requiredGreyDays = 1;
-            } else if (today >= secondGreyDayImplDate) {
-                // This is a simplified transition. "Additional RDO Date" is complex.
-                // For demonstration, let's assume if past secondGreyDayImplDate, we check for 9 RDOs + 1 Grey.
-                requiredRDOs = 9;
-                requiredGreyDays = 1;
-            }
-
-
-            // 1. Minimum RDOs and Grey Days check (per 28-day roster period)
-            // This requires identifying roster periods correctly. For this example,
-            // we'll treat the entire input as one roster, but note the limitation.
-            let rdoCount = 0;
-            let greyDayCount = 0;
-            let rosterPeriodStartDate = roster.length > 0 ? roster[0].date : null; // Start date of current roster data
-            let rosterPeriodEndDate = roster.length > 0 ? roster[roster.length - 1].date : null;
-
-            // Only count if within the same roster period for the purpose of the 28-day count
-            // This is a simplification and needs proper roster period detection for exact compliance.
-            roster.forEach(entry => {
-                if (entry.dutyType.toUpperCase().includes('RDO')) {
-                    rdoCount++;
-                }
-                if (entry.dutyType.toUpperCase().includes('GREY DAY')) {
-                    greyDayCount++;
-                }
-            });
-
-            // This check is a general count over the provided roster, not necessarily a single 28-day period.
-            // For robust checking, you'd need to identify 28-day blocks.
-            if (roster.length > 20) { // Arbitrary check for "enough data to simulate a period"
-                if (rdoCount < requiredRDOs) {
-                    addBreach(`RDOs Breach: Only ${rdoCount} RDOs found. Minimum required is ${requiredRDOs} based on current date context.`);
-                }
-                if (greyDayCount < requiredGreyDays) {
-                    addBreach(`Grey Days Breach: Only ${greyDayCount} Grey Days found. Minimum required is ${requiredGreyDays} based on current date context.`);
-                }
-            } else {
-                // If roster is too short, we can't definitively check 28-day requirements
-                // addBreach("RDO/Grey Day check: Roster input is shorter than a standard 28-day period, precise check not possible.");
-            }
-
-
-            // 2. Weekend Off check
-            let hasWeekendOff = false;
-            let currentWeekendRDOs = 0; // Tracks consecutive RDOs (Sat, Sun)
-            let lastDayWasSaturdayRDO = false;
-
-            for (let i = 0; i < roster.length; i++) {
-                const entry = roster[i];
-                const dayOfWeek = entry.date.getDay(); // 0 for Sunday, 6 for Saturday
-
-                if (entry.dutyType.toUpperCase().includes('RDO')) {
-                    if (dayOfWeek === 6) { // Saturday RDO
-                        lastDayWasSaturdayRDO = true;
-                    } else if (dayOfWeek === 0 && lastDayWasSaturdayRDO) { // Sunday RDO after a Saturday RDO
-                        hasWeekendOff = true;
-                        break; // Found a weekend off, stop checking
-                    } else {
-                        lastDayWasSaturdayRDO = false; // Reset if RDO is not Saturday or Sunday
-                    }
-                } else {
-                    lastDayWasSaturdayRDO = false; // Reset if not an RDO
-                }
-            }
-
-            if (!hasWeekendOff) {
-                addBreach("Weekend Off Breach: At least one weekend (Saturday and Sunday as RDOs) free of all duty is required per roster period.");
-            }
-
-
-            // 3. Consecutive Duty Tours (6 days max, then 2 days off)
-            let consecutiveDutyDays = 0;
-            let lastDayOffCount = 0; // Number of consecutive RDO/Grey days
-
-            for (let i = 0; i < roster.length; i++) {
-                const entry = roster[i];
-                const isDayOff = entry.dutyType.toUpperCase().includes('RDO') || entry.dutyType.toUpperCase().includes('GREY DAY');
-
-                if (isDayOff) {
-                    consecutiveDutyDays = 0; // Reset duty counter
-                    lastDayOffCount++;
-                } else {
-                    consecutiveDutyDays++;
-                    lastDayOffCount = 0; // Reset day off counter
-
-                    if (consecutiveDutyDays > 6) {
-                        // This means the current day is the 7th+ consecutive duty day.
-                        // We need to check if the break *before* this streak was sufficient.
-                        // The rule is "without a minimum of two (2) consecutive days off".
-                        // This check needs context of the days *before* the streak started.
-                        // It's more complex than a simple `lastDayOffCount` here.
-
-                        // Let's re-think this check for clarity and accuracy based on the rule.
-                        // Rule: "not rostered to work two (2) consecutive tours of duty that each consist of six (6) consecutive days without a minimum of two (2) consecutive days off"
-                        // This implies that after 6 consecutive days, you *must* have 2 days off before starting another potential 6-day tour.
-
-                        // A simpler check might be: if current duty day extends a streak beyond 6, AND the last break before this extended streak was less than 2 days.
-                        let streakStart = i - consecutiveDutyDays + 1; // Index of the start of the current streak
-                        let daysOffBeforeStreak = 0;
-                        if (streakStart > 0) { // Only check if there are days before the streak
-                            for (let j = streakStart - 1; j >= 0; j--) {
-                                const prevEntry = roster[j];
-                                const prevIsDayOff = prevEntry.dutyType.toUpperCase().includes('RDO') || prevEntry.dutyType.toUpperCase().includes('GREY DAY');
-                                if (prevIsDayOff) {
-                                    daysOffBeforeStreak++;
-                                } else {
-                                    break; // Found a duty day, break the count of days off
-                                }
-                            }
-                        }
-
-                        if (consecutiveDutyDays > 6 && daysOffBeforeStreak < 2) {
-                            addBreach(`Consecutive Duty Tours Breach: On ${entry.dateString}, pilot is on their ${consecutiveDutyDays}th consecutive duty day. This exceeds 6 consecutive days without a preceding break of at least 2 consecutive days off.`);
-                        }
-                    }
-                }
-            }
-
-
-            // 4. Maximum Number of Early Starts (3 starts before 0600 in any 7-day period)
+            // Maximum Number of Early Starts (3 starts before 0600 in any 7-day period)
+            // "Unless agreed otherwise with the Alliance Group and an individual Pilot,
+            // the Alliance Group will not roster an individual Pilot for more than three (3) starts before 0600 in any seven (7) day period." 
             const earlyStartsThreshold = 3;
             const sevenDaysInMs = 7 * 24 * 60 * 60 * 1000;
             const SIX_AM_IN_MINUTES = parseTime('06:00');
@@ -609,55 +478,70 @@
                 const currentEntry = roster[i];
                 const currentBriefTimeMinutes = parseTime(currentEntry.briefTime);
 
-                // Only consider actual duties (not RDO, GREY DAY, SBY, LEAVE) for early starts
-                const isActualDuty = !(currentEntry.dutyType.toUpperCase().includes('RDO') ||
-                                       currentEntry.dutyType.toUpperCase().includes('GREY DAY') ||
-                                       currentEntry.dutyType.toUpperCase().includes('SBY') || // Exclude Standby
-                                       currentEntry.dutyType.toUpperCase().includes('LEAVE') ||
-                                       isNaN(currentBriefTimeMinutes) // Exclude entries with invalid brief times
-                                      );
+                // Define what constitutes an "actual duty start" for this rule.
+                // Exclude RDO, GREY DAY, SBY (Standby), and LEAVE. Also exclude if briefTime is invalid.
+                // Standby is "neither duty, nor time free of duty." 
+                const isActualDutyStartCandidate = !(
+                    currentEntry.dutyType.toUpperCase().includes('RDO') ||
+                    currentEntry.dutyType.toUpperCase().includes('GREY DAY') ||
+                    currentEntry.dutyType.toUpperCase().includes('SBY') || // Exclude Standby 
+                    currentEntry.dutyType.toUpperCase().includes('LEAVE') ||
+                    isNaN(currentBriefTimeMinutes)
+                );
 
-                if (isActualDuty && currentBriefTimeMinutes < SIX_AM_IN_MINUTES) {
+                // If the current entry is an actual duty start candidate and it's an early start
+                if (isActualDutyStartCandidate && currentBriefTimeMinutes < SIX_AM_IN_MINUTES) {
                     let earlyStartsInWindow = 0;
-                    const windowStartTime = currentEntry.date.getTime() - sevenDaysInMs; // Start of the 7-day window (inclusive)
+                    // The 7-day window starts from exactly 7 days before the *current duty's start date*.
+                    // The rule: "in any seven (7) day period"  which implies a rolling window.
+                    const windowStartTime = new Date(currentEntry.date.getTime() - sevenDaysInMs);
 
-                    // Iterate from the beginning of the roster up to the current entry (inclusive)
-                    // to find all early starts within the 7-day rolling window.
+                    // Iterate through past entries up to the current one to count early starts within the window
                     for (let j = 0; j <= i; j++) {
                         const checkEntry = roster[j];
                         const checkBriefTimeMinutes = parseTime(checkEntry.briefTime);
 
-                        const checkIsActualDuty = !(checkEntry.dutyType.toUpperCase().includes('RDO') ||
-                                                     checkEntry.dutyType.toUpperCase().includes('GREY DAY') ||
-                                                     checkEntry.dutyType.toUpperCase().includes('SBY') || // Exclude Standby
-                                                     checkEntry.dutyType.toUpperCase().includes('LEAVE') ||
-                                                     isNaN(checkBriefTimeMinutes)
-                                                    );
+                        const checkIsActualDutyStartCandidate = !(
+                            checkEntry.dutyType.toUpperCase().includes('RDO') ||
+                            checkEntry.dutyType.toUpperCase().includes('GREY DAY') ||
+                            checkEntry.dutyType.toUpperCase().includes('SBY') || // Exclude Standby 
+                            checkEntry.dutyType.toUpperCase().includes('LEAVE') ||
+                            isNaN(checkBriefTimeMinutes)
+                        );
 
-                        // Check if the entry is within the 7-day window AND is an early actual duty start
-                        if (checkEntry.date.getTime() >= windowStartTime && checkIsActualDuty && checkBriefTimeMinutes < SIX_AM_IN_MINUTES) {
+                        // Check if the entry falls within the 7-day window AND is an early actual duty start
+                        // The window is inclusive of the current day.
+                        if (checkEntry.date.getTime() >= windowStartTime.getTime() &&
+                            checkEntry.date.getTime() <= currentEntry.date.getTime() && // Ensure within or before current day
+                            checkIsActualDutyStartCandidate &&
+                            checkBriefTimeMinutes < SIX_AM_IN_MINUTES) {
                             earlyStartsInWindow++;
                         }
                     }
 
-                    if (earlyStartsInWindow > earlyStartsThreshold) {
-                        // To provide more specific feedback, let's list the dates of the early starts
+                    // The rule states "not more than three (3)". So, if it's 4 or more, it's a breach.
+                    // If it's exactly 3, it's compliant.
+                    if (earlyStartsInWindow > earlyStartsThreshold) { // Changed from >= to > based on "not more than three (3)"
                         let violatingDates = [];
+                        // Collect all early starts within the *same 7-day window* that triggered the breach
                         for (let j = 0; j <= i; j++) {
                             const checkEntry = roster[j];
                             const checkBriefTimeMinutes = parseTime(checkEntry.briefTime);
-                             const checkIsActualDuty = !(checkEntry.dutyType.toUpperCase().includes('RDO') ||
-                                                     checkEntry.dutyType.toUpperCase().includes('GREY DAY') ||
-                                                     checkEntry.dutyType.toUpperCase().includes('SBY') ||
-                                                     checkEntry.dutyType.toUpperCase().includes('LEAVE') ||
-                                                     isNaN(checkBriefTimeMinutes)
-                                                    );
-                            if (checkEntry.date.getTime() >= windowStartTime && checkIsActualDuty && checkBriefTimeMinutes < SIX_AM_IN_MINUTES) {
+                            const checkIsActualDutyStartCandidate = !(
+                                checkEntry.dutyType.toUpperCase().includes('RDO') ||
+                                checkEntry.dutyType.toUpperCase().includes('GREY DAY') ||
+                                checkEntry.dutyType.toUpperCase().includes('SBY') || // Exclude Standby 
+                                checkEntry.dutyType.toUpperCase().includes('LEAVE') ||
+                                isNaN(checkBriefTimeMinutes)
+                            );
+                            if (checkEntry.date.getTime() >= windowStartTime.getTime() &&
+                                checkEntry.date.getTime() <= currentEntry.date.getTime() &&
+                                checkIsActualDutyStartCandidate &&
+                                checkBriefTimeMinutes < SIX_AM_IN_MINUTES) {
                                 violatingDates.push(`${checkEntry.dateString} (${checkEntry.briefTime})`);
                             }
                         }
-
-                        addBreach(`Early Starts Breach: On ${currentEntry.dateString}, there are ${earlyStartsInWindow} duties starting before 06:00 within the 7-day period ending on this date. Maximum allowed is ${earlyStartsThreshold}. Violating duties: ${violatingDates.join(', ')}.`);
+                        addBreach(`Early Starts Breach: On ${currentEntry.dateString}, there are ${earlyStartsInWindow} duties starting before 06:00 within the 7-day period (from ${windowStartTime.toLocaleDateString('en-AU')} to ${currentEntry.date.toLocaleDateString('en-AU')}). Max allowed is ${earlyStartsThreshold}. Violating duties: ${violatingDates.join(', ')}.`);
                     }
                 }
             }
