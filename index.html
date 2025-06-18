@@ -406,7 +406,7 @@
 </head>
 <body>
     <div class="logo">
-        <img src="E190 roster1.png" alt="Alliance Airlines Logo">
+        <img src="alliance-logo.png" alt="Alliance Airlines Logo">
     </div>
     <hr class="divider">
 
@@ -423,13 +423,13 @@
                 <button onclick="generateICS()">Download ICS File</button>
             </div>
             <div class="right-buttons">
-                <button onclick="checkForBreaches()" class="check-breaches-button">Check for Roster Breaches</button>
+                <button onclick="checkForRosterAdvisories()" class="check-breaches-button">Check Roster Advisories</button>
                 <button class="info-button" onclick="showBreachInfoModal()">?</button>
             </div>
         </div>
 
         <div id="breachResults">
-            <h3>Roster Breach Check Results:</h3>
+            <h3>Roster Check Results:</h3>
             <ul id="breachList">
             </ul>
         </div>
@@ -456,15 +456,15 @@
     <div id="breachInfoModal" class="modal-overlay" style="display: none;">
         <div class="modal-content">
             <button class="modal-close-button" onclick="hideBreachInfoModal()">&times;</button>
-            <h4>Roster Breach Check Information (Beta Mode)</h4>
+            <h4>Roster Advisory Information (Beta Mode)</h4>
             <p>This tool provides general guidance. It has not been tested on a wide audience and may contain inaccuracies. Always refer to the official EA document and the rostering policy for definitive interpretation.</p>
-            <p>The tool currently checks for the following potential roster breaches:</p>
+            <p>The tool currently checks for the following potential roster advisories and concerns:</p>
             <ul>
-                <li>**Early Starts** [EA 14.8]: More than 3 consecutive starts before 06:00.</li>
+                <li>**Early Starts Advisory** [EA 14.8]: More than 3 consecutive starts before 06:00. Note: This may be permissible if mutually agreed.</li>
                 <li>**Minimum RDOs** [EA 14.11]: Fewer than 8 Rostered Days Off in a 28-day roster period.</li>
-                <li>**Weekend Off** [EA 14.16]: No full Saturday and Sunday RDO block in a 28-day roster period.</li>
-                <li>**Consecutive Duty Tours** [EA 14.15]: Two tours each consisting of 6 or more consecutive duty days without a minimum of 2 consecutive days off in between.</li>
-                <li>**Rest Periods (Home Base)** [EA 14.48]: Less than 12 hours rest between duties when both duties are at Home Base.</li>
+                <li>**Weekend Off** [EA 14.16]: No full Saturday and Sunday RDO block in a 28-day roster period. Note: This may be permissible if mutually agreed.</li>
+                <li>**Consecutive Duty Tours** [EA 14.15]: Two tours each consisting of 6 or more consecutive duty days without a minimum of 2 consecutive days off in between. Note: This may be permissible if mutually agreed.</li>
+                <li>**Rest Periods (Home Base)** [EA 14.48]: Less than 12 hours rest between duties when both duties are at Home Base. Note: This may be permissible if mutually agreed, or if a relevant CAO or FRMS limitation applies where it is greater than 12 hours.</li>
                 <li>**Short Rest Periods (Info)**: Less than 12 hours rest between duties when one or both duties are away from Home Base. This is for information only as it might be permissible under specific FRMS rules (e.g., 10-hour rule when away).</li>
             </ul>
             <p>
@@ -472,7 +472,7 @@
                 <ul>
                     <li>**Grey Day Directed Work**: (e.g., being directed to work on a Grey Day outside of assessment/remedial training, or if you have nominated to work).</li>
                     <li>Specific RDO and Grey Day buffer periods (e.g., 36-hour for 1 RDO, 60-hour for 2 RDOs, etc.).</li>
-                    <li>Any Flight Duty Period (FDP) or Duty Time limitations based on CAO 48 or FRMS.</li>
+                    <li>Any Flight Duty Period (FDP) or Duty Time limitations based on CAO 48 or FRMS not explicitly covered above.</li>
                     <li>Maximum consecutive nights away from Home Base.</li>
                     <li>Any specific Rest Periods related to Standby.</li>
                     <li>Any other complex rostering rules or buffers.</li>
@@ -619,8 +619,8 @@
 
                 const [dayStr, monStr, আবদুল্লাহ] = rowData[0].split(/[\/\s]/);
                 let currentYear = new Date().getFullYear();
-                if ( আবদুল্লাহ && !isNaN(Number( আবদুল্লাহ ))) {
-                     currentYear = Number( আবদুল্লাহ );
+                if (yyyy && !isNaN(Number(yyyy))) {
+                     currentYear = Number(yyyy);
                 }
 
                 const months = {
@@ -681,7 +681,8 @@
             return rosterEntries;
         }
 
-        function checkForBreaches() {
+        // Renamed function
+        function checkForRosterAdvisories() {
             const roster = parseRosterData();
             if (!roster) {
                 document.getElementById('breachResults').style.display = 'none';
@@ -690,10 +691,10 @@
 
             const breachList = document.getElementById('breachList');
             breachList.innerHTML = '';
-            const breachesFound = [];
+            const advisoriesFound = []; // Renamed from breachesFound
 
-            function addBreach(message, isInfo = false) {
-                breachesFound.push(message);
+            function addAdvisory(message, isInfo = false) { // Renamed from addBreach
+                advisoriesFound.push(message);
                 const li = document.createElement('li');
                 li.textContent = message;
                 if (isInfo) {
@@ -702,12 +703,12 @@
                 breachList.appendChild(li);
             }
 
-            // --- Early Starts Breach Check (4+ consecutive before 06:00) ---
+            // --- Early Starts Advisory (4+ consecutive before 06:00) ---
             const earlyStartsThreshold = 3;
             const SIX_AM_IN_MINUTES = parseTime('06:00');
 
             let consecutiveEarlyStarts = 0;
-            let earlyStartBreachStartDate = null;
+            let earlyStartAdvisoryStartDate = null; // Renamed
 
             for (let i = 0; i < roster.length; i++) {
                 const currentEntry = roster[i];
@@ -723,19 +724,19 @@
 
                 if (isActualDutyStartCandidate && currentBriefTimeMinutes < SIX_AM_IN_MINUTES) {
                     consecutiveEarlyStarts++;
-                    if (earlyStartBreachStartDate === null) {
-                        earlyStartBreachStartDate = currentEntry.dateString;
+                    if (earlyStartAdvisoryStartDate === null) {
+                        earlyStartAdvisoryStartDate = currentEntry.dateString;
                     }
                 } else {
                     if (consecutiveEarlyStarts > earlyStartsThreshold) {
-                        addBreach(`Early Starts Breach [EA 14.8]: Started on ${earlyStartBreachStartDate}, with ${consecutiveEarlyStarts} consecutive duties starting before 06:00 (more than ${earlyStartsThreshold} allowed).`);
+                        addAdvisory(`Early Starts Advisory [EA 14.8]: Started on ${earlyStartAdvisoryStartDate}, with ${consecutiveEarlyStarts} consecutive duties starting before 06:00 (more than ${earlyStartsThreshold} allowed). Note: This may be permissible if mutually agreed.`, false); // Added Note
                     }
                     consecutiveEarlyStarts = 0;
-                    earlyStartBreachStartDate = null;
+                    earlyStartAdvisoryStartDate = null;
                 }
             }
             if (consecutiveEarlyStarts > earlyStartsThreshold) {
-                addBreach(`Early Starts Breach [EA 14.8]: Started on ${earlyStartBreachStartDate}, with ${consecutiveEarlyStarts} consecutive duties starting before 06:00 (more than ${earlyStartsThreshold} allowed).`);
+                addAdvisory(`Early Starts Advisory [EA 14.8]: Started on ${earlyStartAdvisoryStartDate}, with ${consecutiveEarlyStarts} consecutive duties starting before 06:00 (more than ${earlyStartsThreshold} allowed). Note: This may be permissible if mutually agreed.`, false); // Added Note
             }
 
             // --- Minimum RDOs Check (fewer than 8 in 28 days) ---
@@ -758,12 +759,12 @@
                     }
 
                     if (rdoCount < RDO_MINIMUM) {
-                        addBreach(`RDO Breach [EA 14.11]: Only ${rdoCount} RDOs rostered in the ${rosterDurationDays}-day period from ${firstDate.toLocaleDateString('en-AU')} to ${lastDate.toLocaleDateString('en-AU')}. A minimum of ${RDO_MINIMUM} RDOs are required.`);
+                        addAdvisory(`Minimum RDOs Advisory [EA 14.11]: Only ${rdoCount} RDOs rostered in the ${rosterDurationDays}-day period from ${firstDate.toLocaleDateString('en-AU')} to ${lastDate.toLocaleDateString('en-AU')}. A minimum of ${RDO_MINIMUM} RDOs are required.`); // Renamed
                     }
                 }
             }
 
-            // --- One Weekend Off Check (no Sat/Sun RDO block) ---
+            // --- One Weekend Off Advisory (no Sat/Sun RDO block) ---
             let hasWeekendOff = false;
             if (roster.length > 0) {
                 for (let i = 0; i < roster.length - 1; i++) {
@@ -788,11 +789,11 @@
                 const rosterDurationDays = Math.round(rosterDurationMs / (1000 * 60 * 60 * 24)) + 1;
 
                 if (!hasWeekendOff && rosterDurationDays >= (ROSTER_PERIOD_DAYS - 1) && rosterDurationDays <= (ROSTER_PERIOD_DAYS + 1)) {
-                    addBreach(`Weekend Off Breach [EA 14.16]: No full weekend (Saturday and Sunday as RDOs) found in the roster period.`);
+                    addAdvisory(`Weekend Off Advisory [EA 14.16]: No full weekend (Saturday and Sunday as RDOs) found in the roster period. Note: This may be permissible if mutually agreed.`, false); // Renamed & Added Note
                 }
             }
 
-            // --- Consecutive Duty Tours Check (two 6+ day tours without 2+ consecutive days off in between) ---
+            // --- Consecutive Duty Tours Advisory (two 6+ day tours without 2+ consecutive days off in between) ---
             const DUTY_TOUR_LENGTH = 6;
             const REQUIRED_DAYS_OFF_BETWEEN_TOURS = 2;
 
@@ -847,11 +848,11 @@
                 maxConsecutiveDaysOffFound = Math.max(maxConsecutiveDaysOffFound, currentConsecutiveDaysOffStreak);
 
                 if (maxConsecutiveDaysOffFound < REQUIRED_DAYS_OFF_BETWEEN_TOURS) {
-                    addBreach(`Consecutive Duty Tours Breach [EA 14.15]: Worked 6+ days (ending ${firstTour.end}) then another 6+ days (starting ${secondTour.start}) with only ${maxConsecutiveDaysOffFound} consecutive days off in between. Minimum ${REQUIRED_DAYS_OFF_BETWEEN_TOURS} consecutive days off required.`);
+                    addAdvisory(`Consecutive Duty Tours Advisory [EA 14.15]: Worked 6+ days (ending ${firstTour.end}) then another 6+ days (starting ${secondTour.start}) with only ${maxConsecutiveDaysOffFound} consecutive days off in between. Minimum ${REQUIRED_DAYS_OFF_BETWEEN_TOURS} consecutive days off required. Note: This may be permissible if mutually agreed.`, false); // Renamed & Added Note
                 }
             }
 
-            // --- Rest Periods Between Duty Periods Check ---
+            // --- Rest Periods Between Duty Periods Advisory ---
             const HOME_BASE_MIN_REST_HOURS = 12;
             const HOME_BASE_MIN_REST_MINUTES = HOME_BASE_MIN_REST_HOURS * 60;
 
@@ -885,20 +886,20 @@
 
                 if (isPrevDutyAtHomeBase && isCurrentDutyAtHomeBase) {
                     if (restDurationMinutes < HOME_BASE_MIN_REST_MINUTES) {
-                        addBreach(`Rest Period Breach (Home Base) [EA 14.48]: Only ${formatMinutesToHHMM(restDurationMinutes)} rest between duties on ${prevEntry.dateString} (debrief: ${prevEntry.debriefTime}) and ${currentEntry.dateString} (brief: ${currentEntry.briefTime}). Minimum ${HOME_BASE_MIN_REST_HOURS} hours required at Home Base.`);
+                        addAdvisory(`Rest Period Advisory (Home Base) [EA 14.48]: Only ${formatMinutesToHHMM(restDurationMinutes)} rest between duties on ${prevEntry.dateString} (debrief: ${prevEntry.debriefTime}) and ${currentEntry.dateString} (brief: ${currentEntry.briefTime}). Minimum ${HOME_BASE_MIN_REST_HOURS} hours required at Home Base. Note: This may be permissible if mutually agreed, or if a relevant CAO or FRMS limitation applies where it is greater than 12 hours.`, false); // Renamed & Added Note
                     }
                 } else {
                     if (restDurationMinutes < HOME_BASE_MIN_REST_MINUTES) {
-                        addBreach(`Short Rest Period (Info) [EA 14.48]: Only ${formatMinutesToHHMM(restDurationMinutes)} rest between duties on ${prevEntry.dateString} (debrief: ${prevEntry.debriefTime}) and ${currentEntry.dateString} (brief: ${currentEntry.briefTime}). This may be permissible if away from Home Base (e.g., 10-hour rule) or under specific FRMS limitations.`, true);
+                        addAdvisory(`Short Rest Period (Info) [EA 14.48]: Only ${formatMinutesToHHMM(restDurationMinutes)} rest between duties on ${prevEntry.dateString} (debrief: ${prevEntry.debriefTime}) and ${currentEntry.dateString} (brief: ${currentEntry.briefTime}). This may be permissible if away from Home Base (e.g., 10-hour rule) or under specific FRMS limitations.`, true);
                     }
                 }
             }
 
 
             // Display overall result
-            if (breachesFound.length === 0) {
+            if (advisoriesFound.length === 0) { // Renamed from breachesFound
                 const li = document.createElement('li');
-                li.textContent = "No roster breaches found based on the implemented checks.";
+                li.textContent = "No roster advisories or concerns found based on the implemented checks."; // Renamed
                 li.classList.add('no-breach');
                 breachList.appendChild(li);
             }
@@ -906,14 +907,6 @@
             document.getElementById('breachResults').style.display = 'block';
         }
 
-        // New functions for the modal/popover
-        function showBreachInfoModal() {
-            breachInfoModal.style.display = 'flex'; 
-        }
-
-        function hideBreachInfoModal() {
-            breachInfoModal.style.display = 'none';
-        }
 
         function generatePrintout() {
             let lines = document.getElementById('rosterInput').value.trim().split('\n');
@@ -949,8 +942,8 @@
 
                 const [dd, mon, আবদুল্লাহ] = row[0].split(/[\/\s]/);
                 let currentYear = new Date().getFullYear();
-                if ( আবদুল্লাহ && !isNaN(Number( আবদুল্লাহ ))) {
-                    currentYear = Number( আবদুল্লাহ );
+                if (yyyy && !isNaN(Number(yyyy))) {
+                    currentYear = Number(yyyy);
                 }
                 const months = {
                     Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5,
