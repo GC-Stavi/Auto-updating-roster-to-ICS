@@ -532,19 +532,16 @@
             if (!lines.length) return alert("Paste your roster first.");
             lines = cleanHeaderLines(lines);
 
-            // --- START MODIFICATION FOR ROBUST PARSING ---
-            const newBlockRegex = /^\d{2}\/\w{3}\/\d{4}/; // Removed [ \t] from end to be more lenient with initial spacing
-            // Adjusted timeSummaryRegex to use \s+ for any whitespace
+            // Using more flexible regex for line start and time summary
+            const newBlockRegex = /^\d{2}\/\w{3}\/\d{4}/; 
             const timeSummaryRegex = /^\d{1,2}:\d{2}\s+\d{1,2}:\d{2}\s+\d{1,2}:\d{2}\s+\d{1,2}:\d{2}$/;
-            // --- END MODIFICATION FOR ROBUST PARSING ---
-
+            
             let buffer = [], events = [];
 
             function flushRow() {
                 if (!buffer.length) return;
                 const row = Array(10).fill('');
 
-                // --- START MODIFICATION FOR ROBUST PARSING ---
                 // Normalize the first line of the buffer for splitting
                 let normalizedFirstLine = buffer[0]
                     .replace(/[\u00A0\u2002\u2003\u2009]/g, ' ') // Replace common unicode spaces with standard space
@@ -552,8 +549,7 @@
                     .trim(); // Trim leading/trailing whitespace
 
                 const initialSplit = normalizedFirstLine.split('\t'); // Split consistently by tab
-                // --- END MODIFICATION FOR ROBUST PARSING ---
-
+                
                 for (let i = 0; i < initialSplit.length && i < 5; i++) row[i] = initialSplit[i];
 
                 const [dd, mon, yyyy] = row[0].split(/[\/\s]/);
@@ -577,17 +573,15 @@
             }
 
             lines.forEach(line => {
-                // --- START MODIFICATION FOR ROBUST PARSING (for line detection) ---
                 // Normalize line for block detection as well
                 let normalizedLineForDetection = line
-                    .replace(/[\u00A0\u2002\u2003\u2009]/g, ' ')
+                    .replace(/[\u00A0\u2002\u2003\u2009]/g, ' ') // Replace common unicode spaces with standard space
                     .trimStart(); // Only trim start to preserve intent of indent for details
 
                 if (newBlockRegex.test(normalizedLineForDetection) && buffer.length > 0) {
                     flushRow();
                 }
                 buffer.push(line); // Push original line into buffer to preserve full details for the 'details' field
-                // --- END MODIFICATION FOR ROBUST PARSING ---
             });
             flushRow();
 
@@ -605,21 +599,6 @@
 
         // --- NEW BREACH CHECKING FUNCTIONALITY ---
 
-        function parseTime(timeStr) {
-            if (!timeStr || typeof timeStr !== 'string' || !timeStr.includes(':')) {
-                return NaN;
-            }
-            const [hours, minutes] = timeStr.split(':').map(Number);
-            return hours * 60 + minutes;
-        }
-
-        function formatMinutesToHHMM(totalMinutes) {
-            if (isNaN(totalMinutes)) return 'Invalid Time';
-            const hours = Math.floor(totalMinutes / 60);
-            const minutes = totalMinutes % 60;
-            return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
-        }
-
         function parseRosterData() {
             let lines = document.getElementById('rosterInput').value.trim().split('\n');
             if (!lines.length) {
@@ -628,12 +607,10 @@
             }
             lines = cleanHeaderLines(lines);
 
-            // --- START MODIFICATION FOR ROBUST PARSING ---
-            const newBlockRegex = /^\d{2}\/\w{3}\/\d{4}/; // Removed [ \t] from end to be more lenient with initial spacing
-            // Adjusted timeSummaryRegex to use \s+ for any whitespace
+            // Using more flexible regex for line start and time summary
+            const newBlockRegex = /^\d{2}\/\w{3}\/\d{4}/; 
             const timeSummaryRegex = /^\d{1,2}:\d{2}\s+\d{1,2}:\d{2}\s+\d{1,2}:\d{2}\s+\d{1,2}:\d{2}$/;
-            // --- END MODIFICATION FOR ROBUST PARSING ---
-
+            
             let buffer = [];
             const rosterEntries = [];
 
@@ -642,7 +619,6 @@
 
                 const rowData = Array(10).fill('');
 
-                // --- START MODIFICATION FOR ROBUST PARSING ---
                 // Normalize the first line of the buffer for splitting
                 let normalizedFirstLine = buffer[0]
                     .replace(/[\u00A0\u2002\u2003\u2009]/g, ' ') // Replace common unicode spaces with standard space
@@ -650,8 +626,7 @@
                     .trim(); // Trim leading/trailing whitespace
 
                 const initialSplit = normalizedFirstLine.split('\t'); // Split consistently by tab
-                // --- END MODIFICATION FOR ROBUST PARSING ---
-
+                
                 for (let i = 0; i < initialSplit.length && i < 5; i++) rowData[i] = initialSplit[i];
 
                 const [dayStr, monStr, yyyy] = rowData[0].split(/[\/\s]/);
@@ -670,17 +645,13 @@
                 let detailsLines = [];
                 let foundSummary = false;
                 for (let k = 1; k < buffer.length; k++) {
-                    // --- START MODIFICATION FOR ROBUST PARSING ---
                     // Normalize the line before testing against regex
                     let normalizedBufferLine = buffer[k]
                         .replace(/[\u00A0\u2002\u2003\u2009]/g, ' ')
                         .trim(); // Trim for regex test
-                    // --- END MODIFICATION FOR ROBUST PARSING ---
 
                     if (timeSummaryRegex.test(normalizedBufferLine)) {
-                        // --- START MODIFICATION FOR ROBUST PARSING ---
                         summaryParts = normalizedBufferLine.split(/\s+/); // Split by any whitespace
-                        // --- END MODIFICATION FOR ROBUST PARSING ---
                         foundSummary = true;
                         break;
                     } else {
@@ -691,16 +662,12 @@
 
                 if (!foundSummary && detailsLines.length > 0) {
                      const lastDetailLine = detailsLines[detailsLines.length - 1];
-                     // --- START MODIFICATION FOR ROBUST PARSING ---
+                     // Normalize the last detail line in case it's the summary
                      let normalizedLastDetailLine = lastDetailLine
                          .replace(/[\u00A0\u2002\u2003\u2009]/g, ' ')
                          .trim();
-                     // --- END MODIFICATION FOR ROBUST PARSING ---
-
                      if (timeSummaryRegex.test(normalizedLastDetailLine)) {
-                        // --- START MODIFICATION FOR ROBUST PARSING ---
                         summaryParts = normalizedLastDetailLine.split(/\s+/);
-                        // --- END MODIFICATION FOR ROBUST PARBUSTING ---
                         detailsLines.pop();
                         rowData[5] = detailsLines.join('\n');
                      }
@@ -725,7 +692,6 @@
             }
 
             lines.forEach(line => {
-                // --- START MODIFICATION FOR ROBUST PARSING (for line detection) ---
                 // Normalize line for block detection as well
                 let normalizedLineForDetection = line
                     .replace(/[\u00A0\u2002\u2003\u2009]/g, ' ')
@@ -735,7 +701,6 @@
                     processBuffer();
                 }
                 buffer.push(line); // Push original line into buffer to preserve full details for the 'details' field
-                // --- END MODIFICATION FOR ROBUST PARSING ---
             });
             processBuffer();
 
@@ -754,7 +719,7 @@
             breachList.innerHTML = '';
             const advisoriesFound = []; // Renamed from breachesFound
 
-            function addAdvisory(message, isInfo = false) { // Renamed from addBreach
+            function addAdvisory(message, isInfo = false) { // Renamed from addAdvisory
                 advisoriesFound.push(message);
                 const li = document.createElement('li');
                 li.textContent = message;
@@ -790,14 +755,14 @@
                     }
                 } else {
                     if (consecutiveEarlyStarts > earlyStartsThreshold) {
-                        addAdvisory(`Early Starts Advisory [EA 14.8]: Started on ${earlyStartAdvisoryStartDate}, with ${consecutiveEarlyStarts} consecutive duties starting before 06:00 (more than ${earlyStartsThreshold} allowed). Note: This may be permissible if mutually agreed.`, false); // Added Note
+                        addAdvisory(`Early Starts Advisory [EA 14.8]: Started on ${earlyStartAdvisoryStartDate}, with ${consecutiveEarlyStarts} consecutive duties starting before 06:00 (more than ${earlyStartsThreshold} allowed). Note: This may be permissible if mutually agreed.`, false);
                     }
                     consecutiveEarlyStarts = 0;
                     earlyStartAdvisoryStartDate = null;
                 }
             }
             if (consecutiveEarlyStarts > earlyStartsThreshold) {
-                addAdvisory(`Early Starts Advisory [EA 14.8]: Started on ${earlyStartAdvisoryStartDate}, with ${consecutiveEarlyStarts} consecutive duties starting before 06:00 (more than ${earlyStartsThreshold} allowed). Note: This may be permissible if mutually agreed.`, false); // Added Note
+                addAdvisory(`Early Starts Advisory [EA 14.8]: Started on ${earlyStartAdvisoryStartDate}, with ${consecutiveEarlyStarts} consecutive duties starting before 06:00 (more than ${earlyStartsThreshold} allowed). Note: This may be permissible if mutually agreed.`, false);
             }
 
             // --- Minimum RDOs Check (fewer than 8 in 28 days) ---
@@ -820,7 +785,7 @@
                     }
 
                     if (rdoCount < RDO_MINIMUM) {
-                        addAdvisory(`Minimum RDOs Advisory [EA 14.11]: Only ${rdoCount} RDOs rostered in the ${rosterDurationDays}-day period from ${firstDate.toLocaleDateString('en-AU')} to ${lastDate.toLocaleDateString('en-AU')}. A minimum of ${RDO_MINIMUM} RDOs are required.`); // Renamed
+                        addAdvisory(`Minimum RDOs Advisory [EA 14.11]: Only ${rdoCount} RDOs rostered in the ${rosterDurationDays}-day period from ${firstDate.toLocaleDateString('en-AU')} to ${lastDate.toLocaleDateString('en-AU')}. A minimum of ${RDO_MINIMUM} RDOs are required.`);
                     }
                 }
             }
@@ -850,7 +815,7 @@
                 const rosterDurationDays = Math.round(rosterDurationMs / (1000 * 60 * 60 * 24)) + 1;
 
                 if (!hasWeekendOff && rosterDurationDays >= (ROSTER_PERIOD_DAYS - 1) && rosterDurationDays <= (ROSTER_PERIOD_DAYS + 1)) {
-                    addAdvisory(`Weekend Off Advisory [EA 14.16]: No full weekend (Saturday and Sunday as RDOs) found in the roster period. Note: This may be permissible if mutually agreed.`, false); // Renamed & Added Note
+                    addAdvisory(`Weekend Off Advisory [EA 14.16]: No full weekend (Saturday and Sunday as RDOs) found in the roster period. Note: This may be permissible if mutually agreed.`, false);
                 }
             }
 
@@ -909,7 +874,7 @@
                 maxConsecutiveDaysOffFound = Math.max(maxConsecutiveDaysOffFound, currentConsecutiveDaysOffStreak);
 
                 if (maxConsecutiveDaysOffFound < REQUIRED_DAYS_OFF_BETWEEN_TOURS) {
-                    addAdvisory(`Consecutive Duty Tours Advisory [EA 14.15]: Worked 6+ days (ending ${firstTour.end}) then another 6+ days (starting ${secondTour.start}) with only ${maxConsecutiveDaysOffFound} consecutive days off in between. Minimum ${REQUIRED_DAYS_OFF_BETWEEN_TOURS} consecutive days off required. Note: This may be permissible if mutually agreed.`, false); // Renamed & Added Note
+                    addAdvisory(`Consecutive Duty Tours Advisory [EA 14.15]: Worked 6+ days (ending ${firstTour.end}) then another 6+ days (starting ${secondTour.start}) with only ${maxConsecutiveDaysOffFound} consecutive days off in between. Minimum ${REQUIRED_DAYS_OFF_BETWEEN_TOURS} consecutive days off required. Note: This may be permissible if mutually agreed.`, false);
                 }
             }
 
@@ -982,12 +947,10 @@
             if (!lines.length) return alert("Paste your roster first.");
             lines = cleanHeaderLines(lines);
 
-            // --- START MODIFICATION FOR ROBUST PARSING ---
-            const newBlockRegex = /^\d{2}\/\w{3}\/\d{4}/; // Removed [ \t] from end to be more lenient with initial spacing
-            // Adjusted timeSummaryRegex to use \s+ for any whitespace
+            // Using more flexible regex for line start and time summary
+            const newBlockRegex = /^\d{2}\/\w{3}\/\d{4}/; 
             const timeSummaryRegex = /^\d{1,2}:\d{2}\s+\d{1,2}:\d{2}\s+\d{1,2}:\d{2}\s+\d{1,2}:\d{2}$/;
-            // --- END MODIFICATION FOR ROBUST PARSING ---
-
+            
             let buffer = [];
             let totals = [0, 0, 0, 0];
 
@@ -1007,7 +970,6 @@
 
                 const row = Array(10).fill('');
 
-                // --- START MODIFICATION FOR ROBUST PARSING ---
                 // Normalize the first line of the buffer for splitting
                 let normalizedFirstLine = buffer[0]
                     .replace(/[\u00A0\u2002\u2003\u2009]/g, ' ') // Replace common unicode spaces with standard space
@@ -1015,8 +977,7 @@
                     .trim(); // Trim leading/trailing whitespace
 
                 const start = normalizedFirstLine.split('\t'); // Split consistently by tab
-                // --- END MODIFICATION FOR ROBUST PARSING ---
-
+                
                 for (let i = 0; i < start.length && i < 5; i++) row[i] = start[i];
 
                 const [dd, mon, yyyy] = row[0].split(/[\/\s]/);
@@ -1038,17 +999,13 @@
                 let detailsLines = [];
                 let foundSummary = false;
                 for (let k = 1; k < buffer.length; k++) {
-                     // --- START MODIFICATION FOR ROBUST PARSING ---
-                    // Normalize the line before testing against regex
+                     // Normalize the line before testing against regex
                     let normalizedBufferLine = buffer[k]
                         .replace(/[\u00A0\u2002\u2003\u2009]/g, ' ')
                         .trim(); // Trim for regex test
-                    // --- END MODIFICATION FOR ROBUST PARSING ---
 
                     if (timeSummaryRegex.test(normalizedBufferLine)) {
-                        // --- START MODIFICATION FOR ROBUST PARSING ---
                         summaryParts = normalizedBufferLine.split(/\s+/); // Split by any whitespace
-                        // --- END MODIFICATION FOR ROBUST PARSING ---
                         foundSummary = true;
                         break;
                     } else {
@@ -1059,15 +1016,12 @@
 
                 if (!foundSummary && detailsLines.length > 0) {
                      const lastDetailLine = detailsLines[detailsLines.length - 1];
-                     // --- START MODIFICATION FOR ROBUST PARSING ---
+                     // Normalize the last detail line in case it's the summary
                      let normalizedLastDetailLine = lastDetailLine
                          .replace(/[\u00A0\u2002\u2003\u2009]/g, ' ')
                          .trim();
-                     // --- END MODIFICATION FOR ROBUST PARSING ---
                      if (timeSummaryRegex.test(normalizedLastDetailLine)) {
-                        // --- START MODIFICATION FOR ROBUST PARSING ---
                         summaryParts = normalizedLastDetailLine.split(/\s+/);
-                        // --- END MODIFICATION FOR ROBUST PARSING ---
                         detailsLines.pop();
                         row[5] = detailsLines.join('\n');
                      }
@@ -1093,7 +1047,6 @@
             }
 
             lines.forEach(line => {
-                // --- START MODIFICATION FOR ROBUST PARSING (for line detection) ---
                 // Normalize line for block detection as well
                 let normalizedLineForDetection = line
                     .replace(/[\u00A0\u2002\u2003\u2009]/g, ' ')
@@ -1103,7 +1056,6 @@
                     flushRow();
                 }
                 buffer.push(line); // Push original line into buffer to preserve full details for the 'details' field
-                // --- END MODIFICATION FOR ROBUST PARSING ---
             });
             flushRow();
 
