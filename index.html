@@ -89,7 +89,7 @@
             background-color: #e0e0e0;
         }
 
-        /* New style for the "Check for Roster Breaches" button */
+        /* New style for the "Check for Roster Advisories" button */
         .check-breaches-button {
             background-color: #ffc107; /* A subtle yellow */
             border-color: #ffc107;
@@ -406,7 +406,7 @@
 </head>
 <body>
     <div class="logo">
-        <img src="E190 roster1.png" alt="Alliance Airlines Logo">
+        <img src="alliance-logo.png" alt="Alliance Airlines Logo">
     </div>
     <hr class="divider">
 
@@ -423,13 +423,13 @@
                 <button onclick="generateICS()">Download ICS File</button>
             </div>
             <div class="right-buttons">
-                <button onclick="checkForBreaches()" class="check-breaches-button">Check for Roster Breaches</button>
+                <button onclick="checkForRosterAdvisories()" class="check-breaches-button">Check Roster Advisories</button>
                 <button class="info-button" onclick="showBreachInfoModal()">?</button>
             </div>
         </div>
 
         <div id="breachResults">
-            <h3>Roster Breach Check Results:</h3>
+            <h3>Roster Check Results:</h3>
             <ul id="breachList">
             </ul>
         </div>
@@ -456,14 +456,14 @@
     <div id="breachInfoModal" class="modal-overlay" style="display: none;">
         <div class="modal-content">
             <button class="modal-close-button" onclick="hideBreachInfoModal()">&times;</button>
-            <h4>Roster Breach Check Information (Beta Mode)</h4>
+            <h4>Roster Advisory Information (Beta Mode)</h4>
             <p>This tool provides general guidance. It has not been tested on a wide audience and may contain inaccuracies. Always refer to the official EA document and the rostering policy for definitive interpretation.</p>
-            <p>The tool currently checks for the following potential roster breaches:</p>
+            <p>The tool currently checks for the following potential roster advisories and concerns:</p>
             <ul>
-                <li>**Early Starts** [EA 14.8]: More than 3 consecutive starts before 06:00.</li>
+                <li>**Early Starts Advisory** [EA 14.8]: More than 3 consecutive starts before 06:00. Note: This may be permissible if mutually agreed.</li>
                 <li>**Minimum RDOs** [EA 14.11]: Fewer than 8 Rostered Days Off in a 28-day roster period.</li>
-                <li>**Weekend Off** [EA 14.16]: No full Saturday and Sunday RDO block in a 28-day roster period.</li>
-                <li>**Consecutive Duty Tours** [EA 14.15]: Two tours each consisting of 6 or more consecutive duty days without a minimum of 2 consecutive days off in between.</li>
+                <li>**Weekend Off** [EA 14.16]: No full Saturday and Sunday RDO block in a 28-day roster period. Note: This may be permissible if mutually agreed.</li>
+                <li>**Consecutive Duty Tours** [EA 14.15]: Two tours each consisting of 6 or more consecutive duty days without a minimum of 2 consecutive days off in between. Note: This may be permissible if mutually agreed.</li>
                 <li>**Rest Periods (Home Base)** [EA 14.48]: Less than 12 hours rest between duties when both duties are at Home Base.</li>
                 <li>**Short Rest Periods (Info)**: Less than 12 hours rest between duties when one or both duties are away from Home Base. This is for information only as it might be permissible under specific FRMS rules (e.g., 10-hour rule when away).</li>
             </ul>
@@ -472,7 +472,7 @@
                 <ul>
                     <li>**Grey Day Directed Work**: (e.g., being directed to work on a Grey Day outside of assessment/remedial training, or if you have nominated to work).</li>
                     <li>Specific RDO and Grey Day buffer periods (e.g., 36-hour for 1 RDO, 60-hour for 2 RDOs, etc.).</li>
-                    <li>Any Flight Duty Period (FDP) or Duty Time limitations based on CAO 48 or FRMS.</li>
+                    <li>Any Flight Duty Period (FDP) or Duty Time limitations based on CAO 48 or FRMS not explicitly covered above.</li>
                     <li>Maximum consecutive nights away from Home Base.</li>
                     <li>Any specific Rest Periods related to Standby.</li>
                     <li>Any other complex rostering rules or buffers.</li>
@@ -522,49 +522,81 @@
             ];
             return lines.filter(line =>
                 !knownHeaders.some(h =>
+                    // Use a more robust check that handles various whitespaces
                     line.replace(/\s+/g, '').includes(h.replace(/\s+/g, ''))
                 )
             );
         }
+
+        // Helper function to normalize a line's whitespace
+        function normalizeLineWhitespace(line) {
+            // Replace common unicode spaces with standard space, then replace 2+ spaces/tabs with single tab
+            return line
+                .replace(/[\u00A0\u2002\u2003\u2009]/g, ' ') // Non-breaking space, en space, em space, thin space
+                .replace(/ {2,}/g, '\t') // Replace 2 or more standard spaces with a single tab
+                .replace(/\t+/g, '\t') // Replace multiple tabs with a single tab
+                .trim(); // Trim leading/trailing whitespace
+        }
+
 
         function generateICS() {
             let lines = document.getElementById('rosterInput').value.trim().split('\n');
             if (!lines.length) return alert("Paste your roster first.");
             lines = cleanHeaderLines(lines);
 
-            const newBlockRegex = /^\d{2}\/\w{3}\/\d{4}[ \t]/;
-            const timeSummaryRegex = /^\d{1,2}:\d{2}[ \t]+\d{1,2}:\d{2}[ \t]+\d{1,2}:\d{2}[ \t]+\d{1,2}:\d{2}$/;
+            // Use more flexible regex for line start (date followed by any whitespace or nothing, allowing trimStart)
+            const newBlockRegex = /^\d{2}\/\w{3}\/\d{4}/; 
+            // Adjusted timeSummaryRegex to use \s+ for any whitespace
+            const timeSummaryRegex = /^\d{1,2}:\d{2}\s+\d{1,2}:\d{2}\s+\d{1,2}:\d{2}\s+\d{1,2}:\d{2}$/;
+            
             let buffer = [], events = [];
 
             function flushRow() {
                 if (!buffer.length) return;
                 const row = Array(10).fill('');
-                const start = buffer[0].split(/\t| {2,}/);
-                for (let i = 0; i < start.length && i < 5; i++) row[i] = start[i];
 
-                const [dd, mon, আবদুল্লাহ] = row[0].split(/[\/\s]/);
+                // Normalize the first line of the buffer for splitting
+                let normalizedFirstLine = normalizeLineWhitespace(buffer[0]);
+
+                // Split consistently by tab after normalization
+                const initialSplit = normalizedFirstLine.split('\t'); 
+                
+                for (let i = 0; i < initialSplit.length && i < 5; i++) row[i] = initialSplit[i];
+
+                // Year parsing adjustment for robustness
+                const [dd, mon, yearPart] = row[0].split(/[\/\s]/);
+                let rosterYear = new Date().getFullYear(); // Default to current year
+                if (yearPart && !isNaN(Number(yearPart))) {
+                     rosterYear = Number(yearPart);
+                }
+
                 const months = {
                     Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5,
                     Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11
                 };
-                const d = new Date( আবদুল্লাহ, months[mon], dd);
+                const d = new Date(rosterYear, months[mon], Number(dd)); // Use rosterYear here
 
                 const brief = row[2] || '00:00';
                 const debrief = row[3] || '00:00';
                 const duty = row[1];
-                const details = row[5].replace(/\n/g, ' | ');
+                const details = row[5].replace(/\n/g, ' | '); // Should already be cleaned by buffer processing
                 const formatTime = (t) => t.replace(/:/g, '') + '00';
 
-                const dtStart = আবদুল্লাহ + pad(d.getMonth() + 1) + pad(d.getDate()) + 'T' + formatTime(brief);
-                const dtEnd = আবদুল্লাহ + pad(d.getMonth() + 1) + pad(d.getDate()) + 'T' + formatTime(debrief);
+                const dtStart = d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) + 'T' + formatTime(brief);
+                const dtEnd = d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) + 'T' + formatTime(debrief);
 
                 events.push(`BEGIN:VEVENT\nSUMMARY:${duty} ${brief} ${details}\nDTSTART;TZID=Australia/Brisbane:${dtStart}\nDTEND;TZID=Australia/Brisbane:${dtEnd}\nDESCRIPTION:Brief: ${brief} | ${details}\nUID:roster-${dtStart}@roster.local\nDTSTAMP:${dtStart}Z\nEND:VEVENT`);
                 buffer = [];
             }
 
             lines.forEach(line => {
-                if (newBlockRegex.test(line)) flushRow();
-                buffer.push(line);
+                // Normalize line for block detection as well
+                let normalizedLineForDetection = normalizeLineWhitespace(line).trimStart(); 
+
+                if (newBlockRegex.test(normalizedLineForDetection) && buffer.length > 0) {
+                    flushRow();
+                }
+                buffer.push(line); // Push original line into buffer to preserve full details for the 'details' field
             });
             flushRow();
 
@@ -582,21 +614,6 @@
 
         // --- NEW BREACH CHECKING FUNCTIONALITY ---
 
-        function parseTime(timeStr) {
-            if (!timeStr || typeof timeStr !== 'string' || !timeStr.includes(':')) {
-                return NaN;
-            }
-            const [hours, minutes] = timeStr.split(':').map(Number);
-            return hours * 60 + minutes;
-        }
-
-        function formatMinutesToHHMM(totalMinutes) {
-            if (isNaN(totalMinutes)) return 'Invalid Time';
-            const hours = Math.floor(totalMinutes / 60);
-            const minutes = totalMinutes % 60;
-            return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
-        }
-
         function parseRosterData() {
             let lines = document.getElementById('rosterInput').value.trim().split('\n');
             if (!lines.length) {
@@ -605,8 +622,11 @@
             }
             lines = cleanHeaderLines(lines);
 
-            const newBlockRegex = /^\d{2}\/\w{3}\/\d{4}[ \t]/;
-            const timeSummaryRegex = /^\d{1,2}:\d{2}[ \t]+\d{1,2}:\d{2}[ \t]+\d{1,2}:\d{2}[ \t]+\d{1,2}:\d{2}$/;
+            // Use more flexible regex for line start (date followed by any whitespace or nothing, allowing trimStart)
+            const newBlockRegex = /^\d{2}\/\w{3}\/\d{4}/; 
+            // Adjusted timeSummaryRegex to use \s+ for any whitespace
+            const timeSummaryRegex = /^\d{1,2}:\d{2}\s+\d{1,2}:\d{2}\s+\d{1,2}:\d{2}\s+\d{1,2}:\d{2}$/;
+            
             let buffer = [];
             const rosterEntries = [];
 
@@ -614,27 +634,37 @@
                 if (!buffer.length) return;
 
                 const rowData = Array(10).fill('');
-                const initialSplit = buffer[0].split(/\t| {2,}/);
+
+                // Normalize the first line of the buffer for splitting
+                let normalizedFirstLine = normalizeLineWhitespace(buffer[0]);
+
+                // Split consistently by tab after normalization
+                const initialSplit = normalizedFirstLine.split('\t'); 
+                
                 for (let i = 0; i < initialSplit.length && i < 5; i++) rowData[i] = initialSplit[i];
 
-                const [dayStr, monStr, আবদুল্লাহ] = rowData[0].split(/[\/\s]/);
-                let currentYear = new Date().getFullYear();
-                if ( আবদুল্লাহ && !isNaN(Number( আবদুল্লাহ ))) {
-                     currentYear = Number( আবদুল্লাহ );
+                // Year parsing adjustment for robustness
+                const [dd, mon, yearPart] = rowData[0].split(/[\/\s]/);
+                let rosterYear = new Date().getFullYear(); // Default to current year
+                if (yearPart && !isNaN(Number(yearPart))) {
+                     rosterYear = Number(yearPart);
                 }
 
                 const months = {
                     Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5,
                     Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11
                 };
-                const date = new Date(currentYear, months[monStr], Number(dayStr));
+                const date = new Date(rosterYear, months[mon], Number(dd)); // Use rosterYear here
 
                 let summaryParts = [];
                 let detailsLines = [];
                 let foundSummary = false;
                 for (let k = 1; k < buffer.length; k++) {
-                    if (timeSummaryRegex.test(buffer[k])) {
-                        summaryParts = buffer[k].split(/\t| {2,}/);
+                    // Normalize the line before testing against regex
+                    let normalizedBufferLine = normalizeLineWhitespace(buffer[k]);
+
+                    if (timeSummaryRegex.test(normalizedBufferLine)) {
+                        summaryParts = normalizedBufferLine.split(/\s+/); // Split by any whitespace
                         foundSummary = true;
                         break;
                     } else {
@@ -645,8 +675,10 @@
 
                 if (!foundSummary && detailsLines.length > 0) {
                      const lastDetailLine = detailsLines[detailsLines.length - 1];
-                     if (timeSummaryRegex.test(lastDetailLine)) {
-                        summaryParts = lastDetailLine.split(/\t| {2,}/);
+                     // Normalize the last detail line in case it's the summary
+                     let normalizedLastDetailLine = normalizeLineWhitespace(lastDetailLine);
+                     if (timeSummaryRegex.test(normalizedLastDetailLine)) {
+                        summaryParts = normalizedLastDetailLine.split(/\s+/);
                         detailsLines.pop();
                         rowData[5] = detailsLines.join('\n');
                      }
@@ -671,17 +703,21 @@
             }
 
             lines.forEach(line => {
-                if (newBlockRegex.test(line) && buffer.length > 0) {
+                // Normalize line for block detection as well
+                let normalizedLineForDetection = normalizeLineWhitespace(line).trimStart(); 
+
+                if (newBlockRegex.test(normalizedLineForDetection) && buffer.length > 0) {
                     processBuffer();
                 }
-                buffer.push(line);
+                buffer.push(line); // Push original line into buffer to preserve full details for the 'details' field
             });
             processBuffer();
 
             return rosterEntries;
         }
 
-        function checkForBreaches() {
+        // Renamed function
+        function checkForRosterAdvisories() {
             const roster = parseRosterData();
             if (!roster) {
                 document.getElementById('breachResults').style.display = 'none';
@@ -690,10 +726,10 @@
 
             const breachList = document.getElementById('breachList');
             breachList.innerHTML = '';
-            const breachesFound = [];
+            const advisoriesFound = [];
 
-            function addBreach(message, isInfo = false) {
-                breachesFound.push(message);
+            function addAdvisory(message, isInfo = false) {
+                advisoriesFound.push(message);
                 const li = document.createElement('li');
                 li.textContent = message;
                 if (isInfo) {
@@ -702,12 +738,12 @@
                 breachList.appendChild(li);
             }
 
-            // --- Early Starts Breach Check (4+ consecutive before 06:00) ---
+            // --- Early Starts Advisory (4+ consecutive before 06:00) ---
             const earlyStartsThreshold = 3;
             const SIX_AM_IN_MINUTES = parseTime('06:00');
 
             let consecutiveEarlyStarts = 0;
-            let earlyStartBreachStartDate = null;
+            let earlyStartAdvisoryStartDate = null;
 
             for (let i = 0; i < roster.length; i++) {
                 const currentEntry = roster[i];
@@ -723,19 +759,19 @@
 
                 if (isActualDutyStartCandidate && currentBriefTimeMinutes < SIX_AM_IN_MINUTES) {
                     consecutiveEarlyStarts++;
-                    if (earlyStartBreachStartDate === null) {
-                        earlyStartBreachStartDate = currentEntry.dateString;
+                    if (earlyStartAdvisoryStartDate === null) {
+                        earlyStartAdvisoryStartDate = currentEntry.dateString;
                     }
                 } else {
                     if (consecutiveEarlyStarts > earlyStartsThreshold) {
-                        addBreach(`Early Starts Breach [EA 14.8]: Started on ${earlyStartBreachStartDate}, with ${consecutiveEarlyStarts} consecutive duties starting before 06:00 (more than ${earlyStartsThreshold} allowed).`);
+                        addAdvisory(`Early Starts Advisory [EA 14.8]: Started on ${earlyStartAdvisoryStartDate}, with ${consecutiveEarlyStarts} consecutive duties starting before 06:00 (more than ${earlyStartsThreshold} allowed). Note: This may be permissible if mutually agreed.`, false);
                     }
                     consecutiveEarlyStarts = 0;
-                    earlyStartBreachStartDate = null;
+                    earlyStartAdvisoryStartDate = null;
                 }
             }
             if (consecutiveEarlyStarts > earlyStartsThreshold) {
-                addBreach(`Early Starts Breach [EA 14.8]: Started on ${earlyStartBreachStartDate}, with ${consecutiveEarlyStarts} consecutive duties starting before 06:00 (more than ${earlyStartsThreshold} allowed).`);
+                addAdvisory(`Early Starts Advisory [EA 14.8]: Started on ${earlyStartAdvisoryStartDate}, with ${consecutiveEarlyStarts} consecutive duties starting before 06:00 (more than ${earlyStartsThreshold} allowed). Note: This may be permissible if mutually agreed.`, false);
             }
 
             // --- Minimum RDOs Check (fewer than 8 in 28 days) ---
@@ -758,12 +794,12 @@
                     }
 
                     if (rdoCount < RDO_MINIMUM) {
-                        addBreach(`RDO Breach [EA 14.11]: Only ${rdoCount} RDOs rostered in the ${rosterDurationDays}-day period from ${firstDate.toLocaleDateString('en-AU')} to ${lastDate.toLocaleDateString('en-AU')}. A minimum of ${RDO_MINIMUM} RDOs are required.`);
+                        addAdvisory(`Minimum RDOs Advisory [EA 14.11]: Only ${rdoCount} RDOs rostered in the ${rosterDurationDays}-day period from ${firstDate.toLocaleDateString('en-AU')} to ${lastDate.toLocaleDateString('en-AU')}. A minimum of ${RDO_MINIMUM} RDOs are required.`);
                     }
                 }
             }
 
-            // --- One Weekend Off Check (no Sat/Sun RDO block) ---
+            // --- One Weekend Off Advisory (no Sat/Sun RDO block) ---
             let hasWeekendOff = false;
             if (roster.length > 0) {
                 for (let i = 0; i < roster.length - 1; i++) {
@@ -788,11 +824,11 @@
                 const rosterDurationDays = Math.round(rosterDurationMs / (1000 * 60 * 60 * 24)) + 1;
 
                 if (!hasWeekendOff && rosterDurationDays >= (ROSTER_PERIOD_DAYS - 1) && rosterDurationDays <= (ROSTER_PERIOD_DAYS + 1)) {
-                    addBreach(`Weekend Off Breach [EA 14.16]: No full weekend (Saturday and Sunday as RDOs) found in the roster period.`);
+                    addAdvisory(`Weekend Off Advisory [EA 14.16]: No full weekend (Saturday and Sunday as RDOs) found in the roster period. Note: This may be permissible if mutually agreed.`, false);
                 }
             }
 
-            // --- Consecutive Duty Tours Check (two 6+ day tours without 2+ consecutive days off in between) ---
+            // --- Consecutive Duty Tours Advisory (two 6+ day tours without 2+ consecutive days off in between) ---
             const DUTY_TOUR_LENGTH = 6;
             const REQUIRED_DAYS_OFF_BETWEEN_TOURS = 2;
 
@@ -847,11 +883,11 @@
                 maxConsecutiveDaysOffFound = Math.max(maxConsecutiveDaysOffFound, currentConsecutiveDaysOffStreak);
 
                 if (maxConsecutiveDaysOffFound < REQUIRED_DAYS_OFF_BETWEEN_TOURS) {
-                    addBreach(`Consecutive Duty Tours Breach [EA 14.15]: Worked 6+ days (ending ${firstTour.end}) then another 6+ days (starting ${secondTour.start}) with only ${maxConsecutiveDaysOffFound} consecutive days off in between. Minimum ${REQUIRED_DAYS_OFF_BETWEEN_TOURS} consecutive days off required.`);
+                    addAdvisory(`Consecutive Duty Tours Advisory [EA 14.15]: Worked 6+ days (ending ${firstTour.end}) then another 6+ days (starting ${secondTour.start}) with only ${maxConsecutiveDaysOffFound} consecutive days off in between. Minimum ${REQUIRED_DAYS_OFF_BETWEEN_TOURS} consecutive days off required. Note: This may be permissible if mutually agreed.`, false);
                 }
             }
 
-            // --- Rest Periods Between Duty Periods Check ---
+            // --- Rest Periods Between Duty Periods Advisory ---
             const HOME_BASE_MIN_REST_HOURS = 12;
             const HOME_BASE_MIN_REST_MINUTES = HOME_BASE_MIN_REST_HOURS * 60;
 
@@ -885,20 +921,20 @@
 
                 if (isPrevDutyAtHomeBase && isCurrentDutyAtHomeBase) {
                     if (restDurationMinutes < HOME_BASE_MIN_REST_MINUTES) {
-                        addBreach(`Rest Period Breach (Home Base) [EA 14.48]: Only ${formatMinutesToHHMM(restDurationMinutes)} rest between duties on ${prevEntry.dateString} (debrief: ${prevEntry.debriefTime}) and ${currentEntry.dateString} (brief: ${currentEntry.briefTime}). Minimum ${HOME_BASE_MIN_REST_HOURS} hours required at Home Base.`);
+                        addAdvisory(`Rest Period Advisory (Home Base) [EA 14.48]: Only ${formatMinutesToHHMM(restDurationMinutes)} rest between duties on ${prevEntry.dateString} (debrief: ${prevEntry.debriefTime}) and ${currentEntry.dateString} (brief: ${currentEntry.briefTime}). Minimum ${HOME_BASE_MIN_REST_HOURS} hours required at Home Base. Note: This may be permissible if mutually agreed, or if a relevant CAO or FRMS limitation applies where it is greater than 12 hours.`, false);
                     }
                 } else {
                     if (restDurationMinutes < HOME_BASE_MIN_REST_MINUTES) {
-                        addBreach(`Short Rest Period (Info) [EA 14.48]: Only ${formatMinutesToHHMM(restDurationMinutes)} rest between duties on ${prevEntry.dateString} (debrief: ${prevEntry.debriefTime}) and ${currentEntry.dateString} (brief: ${currentEntry.briefTime}). This may be permissible if away from Home Base (e.g., 10-hour rule) or under specific FRMS limitations.`, true);
+                        addAdvisory(`Short Rest Period (Info) [EA 14.48]: Only ${formatMinutesToHHMM(restDurationMinutes)} rest between duties on ${prevEntry.dateString} (debrief: ${prevEntry.debriefTime}) and ${currentEntry.dateString} (brief: ${currentEntry.briefTime}). This may be permissible if away from Home Base (e.g., 10-hour rule) or under specific FRMS limitations.`, true);
                     }
                 }
             }
 
 
             // Display overall result
-            if (breachesFound.length === 0) {
+            if (advisoriesFound.length === 0) {
                 const li = document.createElement('li');
-                li.textContent = "No roster breaches found based on the implemented checks.";
+                li.textContent = "No roster advisories or concerns found based on the implemented checks.";
                 li.classList.add('no-breach');
                 breachList.appendChild(li);
             }
@@ -920,12 +956,11 @@
             if (!lines.length) return alert("Paste your roster first.");
             lines = cleanHeaderLines(lines);
 
-            const tbody = document.getElementById('printTableBody');
-            const table = document.getElementById('printTable');
-            tbody.innerHTML = '';
-
-            const newBlockRegex = /^\d{2}\/\w{3}\/\d{4}[ \t]/;
-            const timeSummaryRegex = /^\d{1,2}:\d{2}[ \t]+\d{1,2}:\d{2}[ \t]+\d{1,2}:\d{2}[ \t]+\d{1,2}:\d{2}$/;
+            // Use more flexible regex for line start (date followed by any whitespace or nothing, allowing trimStart)
+            const newBlockRegex = /^\d{2}\/\w{3}\/\d{4}/; 
+            // Adjusted timeSummaryRegex to use \s+ for any whitespace
+            const timeSummaryRegex = /^\d{1,2}:\d{2}\s+\d{1,2}:\d{2}\s+\d{1,2}:\d{2}\s+\d{1,2}:\d{2}$/;
+            
             let buffer = [];
             let totals = [0, 0, 0, 0];
 
@@ -944,19 +979,26 @@
                 if (!buffer.length) return;
 
                 const row = Array(10).fill('');
-                const start = buffer[0].split(/\t| {2,}/);
+
+                // Normalize the first line of the buffer for splitting
+                let normalizedFirstLine = normalizeLineWhitespace(buffer[0]);
+
+                // Split consistently by tab after normalization
+                const start = normalizedFirstLine.split('\t'); 
+                
                 for (let i = 0; i < start.length && i < 5; i++) row[i] = start[i];
 
-                const [dd, mon, আবদুল্লাহ] = row[0].split(/[\/\s]/);
-                let currentYear = new Date().getFullYear();
-                if ( আবদুল্লাহ && !isNaN(Number( আবদুল্লাহ ))) {
-                    currentYear = Number( আবদুল্লাহ );
+                // Year parsing adjustment for robustness
+                const [dd, mon, yearPart] = row[0].split(/[\/\s]/);
+                let rosterYear = new Date().getFullYear(); // Default to current year
+                if (yearPart && !isNaN(Number(yearPart))) {
+                    rosterYear = Number(yearPart);
                 }
                 const months = {
                     Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5,
                     Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11
                 };
-                const d = new Date(currentYear, months[mon], Number(dd));
+                const d = new Date(rosterYear, months[mon], Number(dd));
                 const dayOfWeek = d.toLocaleDateString('en-AU', { weekday: 'short' });
                 const fullDay = d.toLocaleDateString('en-AU', { weekday: 'long' });
                 row[0] = `${dayOfWeek} ${row[0]}`;
@@ -966,8 +1008,11 @@
                 let detailsLines = [];
                 let foundSummary = false;
                 for (let k = 1; k < buffer.length; k++) {
-                    if (timeSummaryRegex.test(buffer[k])) {
-                        summaryParts = buffer[k].split(/\t| {2,}/);
+                     // Normalize the line before testing against regex
+                    let normalizedBufferLine = normalizeLineWhitespace(buffer[k]);
+
+                    if (timeSummaryRegex.test(normalizedBufferLine)) {
+                        summaryParts = normalizedBufferLine.split(/\s+/); // Split by any whitespace
                         foundSummary = true;
                         break;
                     } else {
@@ -978,8 +1023,10 @@
 
                 if (!foundSummary && detailsLines.length > 0) {
                      const lastDetailLine = detailsLines[detailsLines.length - 1];
-                     if (timeSummaryRegex.test(lastDetailLine)) {
-                        summaryParts = lastDetailLine.split(/\t| {2,}/);
+                     // Normalize the last detail line in case it's the summary
+                     let normalizedLastDetailLine = normalizeLineWhitespace(lastDetailLine);
+                     if (timeSummaryRegex.test(normalizedLastDetailLine)) {
+                        summaryParts = normalizedLastDetailLine.split(/\s+/);
                         detailsLines.pop();
                         row[5] = detailsLines.join('\n');
                      }
@@ -1005,8 +1052,13 @@
             }
 
             lines.forEach(line => {
-                if (newBlockRegex.test(line)) flushRow();
-                buffer.push(line);
+                // Normalize line for block detection as well
+                let normalizedLineForDetection = normalizeLineWhitespace(line).trimStart(); 
+
+                if (newBlockRegex.test(normalizedLineForDetection) && buffer.length > 0) {
+                    flushRow();
+                }
+                buffer.push(line); // Push original line into buffer to preserve full details for the 'details' field
             });
             flushRow();
 
