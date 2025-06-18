@@ -282,7 +282,7 @@
                 box-shadow: none;
                 padding: 0; /* Remove container padding */
                 max-width: 100%;
-                width: 100%; /* Ensure container takes full width */
+                width: 100%; /* Ensure container takes full full width */
                 margin: 0; /* Remove container margins */
             }
 
@@ -527,13 +527,25 @@
             );
         }
 
+        // Helper function to normalize a line's whitespace
+        function normalizeLineWhitespace(line) {
+            // Replace common unicode spaces with standard space, then replace 2+ spaces/tabs with single tab
+            return line
+                .replace(/[\u00A0\u2002\u2003\u2009]/g, ' ') // Non-breaking space, en space, em space, thin space
+                .replace(/ {2,}/g, '\t') // Replace 2 or more standard spaces with a single tab
+                .replace(/\t+/g, '\t') // Replace multiple tabs with a single tab
+                .trim(); // Trim leading/trailing whitespace
+        }
+
+
         function generateICS() {
             let lines = document.getElementById('rosterInput').value.trim().split('\n');
             if (!lines.length) return alert("Paste your roster first.");
             lines = cleanHeaderLines(lines);
 
-            // Using more flexible regex for line start and time summary
+            // Use more flexible regex for line start (date followed by any whitespace or nothing, allowing trimStart)
             const newBlockRegex = /^\d{2}\/\w{3}\/\d{4}/; 
+            // Adjusted timeSummaryRegex to use \s+ for any whitespace
             const timeSummaryRegex = /^\d{1,2}:\d{2}\s+\d{1,2}:\d{2}\s+\d{1,2}:\d{2}\s+\d{1,2}:\d{2}$/;
             
             let buffer = [], events = [];
@@ -543,30 +555,34 @@
                 const row = Array(10).fill('');
 
                 // Normalize the first line of the buffer for splitting
-                let normalizedFirstLine = buffer[0]
-                    .replace(/[\u00A0\u2002\u2003\u2009]/g, ' ') // Replace common unicode spaces with standard space
-                    .replace(/ {2,}/g, '\t') // Replace 2 or more spaces with a single tab
-                    .trim(); // Trim leading/trailing whitespace
+                let normalizedFirstLine = normalizeLineWhitespace(buffer[0]);
 
-                const initialSplit = normalizedFirstLine.split('\t'); // Split consistently by tab
+                // Split consistently by tab after normalization
+                const start = normalizedFirstLine.split('\t'); 
                 
-                for (let i = 0; i < initialSplit.length && i < 5; i++) row[i] = initialSplit[i];
+                for (let i = 0; i < start.length && i < 5; i++) row[i] = start[i];
 
-                const [dd, mon, yyyy] = row[0].split(/[\/\s]/);
+                // Year parsing adjustment for robustness
+                const [dd, mon, yearPart] = row[0].split(/[\/\s]/);
+                let rosterYear = new Date().getFullYear(); // Default to current year
+                if (yearPart && !isNaN(Number(yearPart))) {
+                     rosterYear = Number(yearPart);
+                }
+
                 const months = {
                     Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5,
                     Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11
                 };
-                const d = new Date(yyyy, months[mon], dd);
+                const d = new Date(rosterYear, months[mon], Number(dd)); // Use rosterYear here
 
                 const brief = row[2] || '00:00';
                 const debrief = row[3] || '00:00';
                 const duty = row[1];
-                const details = row[5].replace(/\n/g, ' | ');
+                const details = row[5].replace(/\n/g, ' | '); // Should already be cleaned by buffer processing
                 const formatTime = (t) => t.replace(/:/g, '') + '00';
 
-                const dtStart = yyyy + pad(d.getMonth() + 1) + pad(d.getDate()) + 'T' + formatTime(brief);
-                const dtEnd = yyyy + pad(d.getMonth() + 1) + pad(d.getDate()) + 'T' + formatTime(debrief);
+                const dtStart = d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) + 'T' + formatTime(brief);
+                const dtEnd = d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) + 'T' + formatTime(debrief);
 
                 events.push(`BEGIN:VEVENT\nSUMMARY:${duty} ${brief} ${details}\nDTSTART;TZID=Australia/Brisbane:${dtStart}\nDTEND;TZID=Australia/Brisbane:${dtEnd}\nDESCRIPTION:Brief: ${brief} | ${details}\nUID:roster-${dtStart}@roster.local\nDTSTAMP:${dtStart}Z\nEND:VEVENT`);
                 buffer = [];
@@ -574,9 +590,7 @@
 
             lines.forEach(line => {
                 // Normalize line for block detection as well
-                let normalizedLineForDetection = line
-                    .replace(/[\u00A0\u2002\u2003\u2009]/g, ' ') // Replace common unicode spaces with standard space
-                    .trimStart(); // Only trim start to preserve intent of indent for details
+                let normalizedLineForDetection = normalizeLineWhitespace(line).trimStart(); 
 
                 if (newBlockRegex.test(normalizedLineForDetection) && buffer.length > 0) {
                     flushRow();
@@ -607,8 +621,9 @@
             }
             lines = cleanHeaderLines(lines);
 
-            // Using more flexible regex for line start and time summary
+            // Use more flexible regex for line start (date followed by any whitespace or nothing, allowing trimStart)
             const newBlockRegex = /^\d{2}\/\w{3}\/\d{4}/; 
+            // Adjusted timeSummaryRegex to use \s+ for any whitespace
             const timeSummaryRegex = /^\d{1,2}:\d{2}\s+\d{1,2}:\d{2}\s+\d{1,2}:\d{2}\s+\d{1,2}:\d{2}$/;
             
             let buffer = [];
@@ -620,35 +635,31 @@
                 const rowData = Array(10).fill('');
 
                 // Normalize the first line of the buffer for splitting
-                let normalizedFirstLine = buffer[0]
-                    .replace(/[\u00A0\u2002\u2003\u2009]/g, ' ') // Replace common unicode spaces with standard space
-                    .replace(/ {2,}/g, '\t') // Replace 2 or more spaces with a single tab
-                    .trim(); // Trim leading/trailing whitespace
+                let normalizedFirstLine = normalizeLineWhitespace(buffer[0]);
 
-                const initialSplit = normalizedFirstLine.split('\t'); // Split consistently by tab
+                // Split consistently by tab after normalization
+                const initialSplit = normalizedFirstLine.split('\t'); 
                 
                 for (let i = 0; i < initialSplit.length && i < 5; i++) rowData[i] = initialSplit[i];
 
-                const [dayStr, monStr, yyyy] = rowData[0].split(/[\/\s]/);
-                let currentYear = new Date().getFullYear();
-                if (yyyy && !isNaN(Number(yyyy))) {
-                     currentYear = Number(yyyy);
+                const [dd, mon, yearPart] = rowData[0].split(/[\/\s]/);
+                let currentYear = new Date().getFullYear(); // Default to current year
+                if (yearPart && !isNaN(Number(yearPart))) {
+                     currentYear = Number(yearPart);
                 }
 
                 const months = {
                     Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5,
                     Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11
                 };
-                const date = new Date(currentYear, months[monStr], Number(dayStr));
+                const date = new Date(currentYear, months[mon], Number(dd)); // Use rosterYear here
 
                 let summaryParts = [];
                 let detailsLines = [];
                 let foundSummary = false;
                 for (let k = 1; k < buffer.length; k++) {
                     // Normalize the line before testing against regex
-                    let normalizedBufferLine = buffer[k]
-                        .replace(/[\u00A0\u2002\u2003\u2009]/g, ' ')
-                        .trim(); // Trim for regex test
+                    let normalizedBufferLine = normalizeLineWhitespace(buffer[k]);
 
                     if (timeSummaryRegex.test(normalizedBufferLine)) {
                         summaryParts = normalizedBufferLine.split(/\s+/); // Split by any whitespace
@@ -663,9 +674,7 @@
                 if (!foundSummary && detailsLines.length > 0) {
                      const lastDetailLine = detailsLines[detailsLines.length - 1];
                      // Normalize the last detail line in case it's the summary
-                     let normalizedLastDetailLine = lastDetailLine
-                         .replace(/[\u00A0\u2002\u2003\u2009]/g, ' ')
-                         .trim();
+                     let normalizedLastDetailLine = normalizeLineWhitespace(lastDetailLine);
                      if (timeSummaryRegex.test(normalizedLastDetailLine)) {
                         summaryParts = normalizedLastDetailLine.split(/\s+/);
                         detailsLines.pop();
@@ -693,9 +702,7 @@
 
             lines.forEach(line => {
                 // Normalize line for block detection as well
-                let normalizedLineForDetection = line
-                    .replace(/[\u00A0\u2002\u2003\u2009]/g, ' ')
-                    .trimStart(); // Only trim start to preserve intent of indent for details
+                let normalizedLineForDetection = normalizeLineWhitespace(line).trimStart(); 
 
                 if (newBlockRegex.test(normalizedLineForDetection) && buffer.length > 0) {
                     processBuffer();
@@ -717,9 +724,9 @@
 
             const breachList = document.getElementById('breachList');
             breachList.innerHTML = '';
-            const advisoriesFound = []; // Renamed from breachesFound
+            const advisoriesFound = [];
 
-            function addAdvisory(message, isInfo = false) { // Renamed from addAdvisory
+            function addAdvisory(message, isInfo = false) {
                 advisoriesFound.push(message);
                 const li = document.createElement('li');
                 li.textContent = message;
@@ -734,7 +741,7 @@
             const SIX_AM_IN_MINUTES = parseTime('06:00');
 
             let consecutiveEarlyStarts = 0;
-            let earlyStartAdvisoryStartDate = null; // Renamed
+            let earlyStartAdvisoryStartDate = null;
 
             for (let i = 0; i < roster.length; i++) {
                 const currentEntry = roster[i];
@@ -947,8 +954,9 @@
             if (!lines.length) return alert("Paste your roster first.");
             lines = cleanHeaderLines(lines);
 
-            // Using more flexible regex for line start and time summary
+            // Use more flexible regex for line start (date followed by any whitespace or nothing, allowing trimStart)
             const newBlockRegex = /^\d{2}\/\w{3}\/\d{4}/; 
+            // Adjusted timeSummaryRegex to use \s+ for any whitespace
             const timeSummaryRegex = /^\d{1,2}:\d{2}\s+\d{1,2}:\d{2}\s+\d{1,2}:\d{2}\s+\d{1,2}:\d{2}$/;
             
             let buffer = [];
@@ -971,25 +979,24 @@
                 const row = Array(10).fill('');
 
                 // Normalize the first line of the buffer for splitting
-                let normalizedFirstLine = buffer[0]
-                    .replace(/[\u00A0\u2002\u2003\u2009]/g, ' ') // Replace common unicode spaces with standard space
-                    .replace(/ {2,}/g, '\t') // Replace 2 or more spaces with a single tab
-                    .trim(); // Trim leading/trailing whitespace
+                let normalizedFirstLine = normalizeLineWhitespace(buffer[0]);
 
-                const start = normalizedFirstLine.split('\t'); // Split consistently by tab
+                // Split consistently by tab after normalization
+                const start = normalizedFirstLine.split('\t'); 
                 
                 for (let i = 0; i < start.length && i < 5; i++) row[i] = start[i];
 
-                const [dd, mon, yyyy] = row[0].split(/[\/\s]/);
-                let currentYear = new Date().getFullYear();
-                if (yyyy && !isNaN(Number(yyyy))) {
-                    currentYear = Number(yyyy);
+                // Year parsing adjustment for robustness
+                const [dd, mon, yearPart] = row[0].split(/[\/\s]/);
+                let rosterYear = new Date().getFullYear(); // Default to current year
+                if (yearPart && !isNaN(Number(yearPart))) {
+                    rosterYear = Number(yearPart);
                 }
                 const months = {
                     Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5,
                     Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11
                 };
-                const d = new Date(currentYear, months[mon], Number(dd));
+                const d = new Date(rosterYear, months[mon], Number(dd));
                 const dayOfWeek = d.toLocaleDateString('en-AU', { weekday: 'short' });
                 const fullDay = d.toLocaleDateString('en-AU', { weekday: 'long' });
                 row[0] = `${dayOfWeek} ${row[0]}`;
@@ -1000,9 +1007,7 @@
                 let foundSummary = false;
                 for (let k = 1; k < buffer.length; k++) {
                      // Normalize the line before testing against regex
-                    let normalizedBufferLine = buffer[k]
-                        .replace(/[\u00A0\u2002\u2003\u2009]/g, ' ')
-                        .trim(); // Trim for regex test
+                    let normalizedBufferLine = normalizeLineWhitespace(buffer[k]);
 
                     if (timeSummaryRegex.test(normalizedBufferLine)) {
                         summaryParts = normalizedBufferLine.split(/\s+/); // Split by any whitespace
@@ -1017,9 +1022,7 @@
                 if (!foundSummary && detailsLines.length > 0) {
                      const lastDetailLine = detailsLines[detailsLines.length - 1];
                      // Normalize the last detail line in case it's the summary
-                     let normalizedLastDetailLine = lastDetailLine
-                         .replace(/[\u00A0\u2002\u2003\u2009]/g, ' ')
-                         .trim();
+                     let normalizedLastDetailLine = normalizeLineWhitespace(lastDetailLine);
                      if (timeSummaryRegex.test(normalizedLastDetailLine)) {
                         summaryParts = normalizedLastDetailLine.split(/\s+/);
                         detailsLines.pop();
@@ -1048,9 +1051,7 @@
 
             lines.forEach(line => {
                 // Normalize line for block detection as well
-                let normalizedLineForDetection = line
-                    .replace(/[\u00A0\u2002\u2003\u2009]/g, ' ')
-                    .trimStart(); // Only trim start to preserve intent of indent for details
+                let normalizedLineForDetection = normalizeLineWhitespace(line).trimStart(); 
 
                 if (newBlockRegex.test(normalizedLineForDetection) && buffer.length > 0) {
                     flushRow();
