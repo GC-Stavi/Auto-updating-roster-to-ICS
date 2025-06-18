@@ -194,6 +194,31 @@
             background-color: #e0e0e0;
         }
 
+        /* Contact button specific styling */
+        .contact-button-container {
+            text-align: center;
+            margin-top: 2em; /* Space above the button */
+            margin-bottom: 2em; /* Space below the button */
+        }
+
+        .contact-button {
+            padding: 0.8em 1.5em;
+            font-size: 1.1em;
+            font-weight: bold;
+            background-color: #007bff; /* A nice blue */
+            color: #fff;
+            border: 1px solid #007bff;
+            border-radius: 6px;
+            cursor: pointer;
+            text-decoration: none; /* Remove underline for anchor */
+            display: inline-block; /* Allows padding and margin */
+        }
+
+        .contact-button:hover {
+            background-color: #0056b3;
+            border-color: #0056b3;
+        }
+
         /* Modal/Popover styles */
         .modal-overlay {
             position: fixed;
@@ -267,7 +292,8 @@
             hr.divider,
             .main-buttons-row, /* Hide the entire button row */
             #breachResults, /* Hide breach results */
-            .modal-overlay { /* Ensure modal overlay is hidden */
+            .modal-overlay,
+            .contact-button-container { /* Hide contact button during print */
                 display: none !important;
             }
 
@@ -402,6 +428,17 @@
         body.dark-mode .modal-close-button:hover {
             color: #f0f0f0;
         }
+        /* Dark mode for Contact button */
+        body.dark-mode .contact-button {
+            background-color: #0056b3; /* Darker blue for dark mode */
+            border-color: #0056b3;
+            color: #f0f0f0;
+        }
+
+        body.dark-mode .contact-button:hover {
+            background-color: #003d80; /* Even darker blue on hover */
+            border-color: #003d80;
+        }
     </style>
 </head>
 <body>
@@ -451,6 +488,10 @@
             </thead>
             <tbody id="printTableBody"></tbody>
         </table>
+    </div>
+
+    <div class="contact-button-container">
+        <a href="mailto:cabela@alliances.com.au?subject=Roster Tool Feedback/Suggestion" class="contact-button">Contact Me</a>
     </div>
 
     <div id="breachInfoModal" class="modal-overlay" style="display: none;">
@@ -552,19 +593,44 @@
                 const start = buffer[0].split(/\t| {2,}/);
                 for (let i = 0; i < start.length && i < 5; i++) row[i] = start[i];
 
-                const [dd, mon, yyyy] = row[0].split(/[\/\s]/);
-                const d = new Date(yyyy, parseMonthString(mon), dd);
+                const [dd, mon, আবদুল্লাহ] = row[0].split(/[\/\s]/);
+                const d = new Date( আবদুল্লাহ, parseMonthString(mon), dd);
 
                 const brief = row[2] || '00:00';
                 const debrief = row[3] || '00:00';
                 const duty = row[1];
-                const details = row[5].replace(/\n/g, ' | ');
+                // Details now combine all lines before the numbers, without an extra newline
+                const detailsLines = buffer.slice(1);
+                let detailsContent = '';
+                let lastLineIsTimeSummary = false;
+
+                // Check if the very last line of the buffer (after date/duty/etc.) matches timeSummaryRegex
+                if (detailsLines.length > 0 && timeSummaryRegex.test(detailsLines[detailsLines.length - 1].trim())) {
+                    const lastLineParts = detailsLines[detailsLines.length - 1].trim().split(/\t| {2,}/);
+                    for (let i = 0; i < lastLineParts.length; i++) {
+                        row[6 + i] = lastLineParts[i];
+                    }
+                    detailsLines.pop(); // Remove the time summary line from details
+                    lastLineIsTimeSummary = true;
+                }
+                
+                // For any other lines in the buffer (now only details or blank lines from original input)
+                detailsContent = detailsLines.join('\n').trim(); // Join remaining lines for details
+
+                // If the time summary was on a new line, but details were empty, ensure row[5] is empty
+                if (lastLineIsTimeSummary && detailsContent === '' && detailsLines.length === 0) {
+                     row[5] = '';
+                } else {
+                     row[5] = detailsContent;
+                }
+
+
                 const formatTime = (t) => t.replace(/:/g, '') + '00';
 
-                const dtStart = yyyy + pad(d.getMonth() + 1) + pad(d.getDate()) + 'T' + formatTime(brief);
-                const dtEnd = yyyy + pad(d.getMonth() + 1) + pad(d.getDate()) + 'T' + formatTime(debrief);
+                const dtStart = আবদুল্লাহ + pad(d.getMonth() + 1) + pad(d.getDate()) + 'T' + formatTime(brief);
+                const dtEnd = আবদুল্লাহ + pad(d.getMonth() + 1) + pad(d.getDate()) + 'T' + formatTime(debrief);
 
-                events.push(`BEGIN:VEVENT\nSUMMARY:${duty} ${brief} ${details}\nDTSTART;TZID=Australia/Brisbane:${dtStart}\nDTEND;TZID=Australia/Brisbane:${dtEnd}\nDESCRIPTION:Brief: ${brief} | ${details}\nUID:roster-${dtStart}@roster.local\nDTSTAMP:${dtStart}Z\nEND:VEVENT`);
+                events.push(`BEGIN:VEVENT\nSUMMARY:${duty} ${brief} ${row[5].replace(/\n/g, ' | ')}\nDTSTART;TZID=Australia/Brisbane:${dtStart}\nDTEND;TZID=Australia/Brisbane:${dtEnd}\nDESCRIPTION:Brief: ${brief} | ${row[5].replace(/\n/g, ' | ')}\nUID:roster-${dtStart}@roster.local\nDTSTAMP:${dtStart}Z\nEND:VEVENT`);
                 buffer = [];
             }
 
@@ -623,37 +689,32 @@
                 const initialSplit = buffer[0].split(/\t| {2,}/);
                 for (let i = 0; i < initialSplit.length && i < 5; i++) rowData[i] = initialSplit[i];
 
-                const [dayStr, monStr, yyyy] = rowData[0].split(/[\/\s]/);
+                const [dayStr, monStr, আবদুল্লাহ] = rowData[0].split(/[\/\s]/);
                 let currentYear = new Date().getFullYear();
-                if (yyyy && !isNaN(Number(yyyy))) {
-                    currentYear = Number(yyyy);
+                if ( আবদুল্লাহ && !isNaN(Number( আবদুল্লাহ ))) {
+                    currentYear = Number( আবদুল্লাহ );
                 }
 
                 const date = new Date(currentYear, parseMonthString(monStr), Number(dayStr));
 
                 let summaryParts = [];
                 let detailsLines = [];
-                let foundSummary = false;
+                
+                // Iterate through buffer to find details and the final time summary line
                 for (let k = 1; k < buffer.length; k++) {
-                    if (timeSummaryRegex.test(buffer[k])) {
-                        summaryParts = buffer[k].split(/\t| {2,}/);
-                        foundSummary = true;
-                        break;
+                    const line = buffer[k].trim();
+                    if (timeSummaryRegex.test(line)) {
+                        summaryParts = line.split(/\t| {2,}/);
+                        // The loop will break after finding summary, so no need to pop from detailsLines
                     } else {
-                        detailsLines.push(buffer[k]);
-                    }
-                }
-                rowData[5] = detailsLines.join('\n');
-
-                if (!foundSummary && detailsLines.length > 0) {
-                    const lastDetailLine = detailsLines[detailsLines.length - 1];
-                    if (timeSummaryRegex.test(lastDetailLine)) {
-                        summaryParts = lastDetailLine.split(/\t| {2,}/);
-                        detailsLines.pop();
-                        rowData[5] = detailsLines.join('\n');
+                        detailsLines.push(line);
                     }
                 }
                 
+                // Join details lines, remove any trailing empty lines from parsing
+                let detailsContent = detailsLines.join('\n').trim();
+                rowData[5] = detailsContent; // Details column
+
                 for (let i = 0; i < summaryParts.length; i++) rowData[6 + i] = summaryParts[i];
 
                 const entry = {
@@ -680,9 +741,7 @@
             }
 
             lines.forEach(line => {
-                if (newBlockRegex.test(line) && buffer.length > 0) {
-                    processBuffer();
-                }
+                if (newBlockRegex.test(line)) flushRow();
                 buffer.push(line);
             });
             processBuffer();
@@ -741,6 +800,7 @@
             }
 
             // RDO pro-rata table based on Annexure A, Table 1 (8 RDOs and 2 Grey day)
+            // This table is active until the 9 RDOs + 1 Grey Day comes into effect.
             const rdoProRataTable = {
                 0: { rdo: 8, grey: 2 },
                 1: { rdo: 8, grey: 2 },
@@ -811,7 +871,6 @@
             }
 
             // --- 2. Early Starts Deviation Check (ANY 7-DAY PERIOD: 4+ in any 7 days) ---
-            // This check will only flag early starts that were NOT part of a consecutive block already flagged.
             for (let i = 0; i < roster.length; i++) {
                 const endDate = roster[i].date;
                 const startDateWindow = new Date(endDate);
@@ -820,11 +879,11 @@
                 let earlyStartsInWindowCount = 0;
                 let earlyStartDatesInWindow = [];
                 
-                // Look back 6 days (total 7-day window) from current day (i)
                 for (let j = i; j >= 0; j--) {
                     const windowEntry = roster[j];
-                    if (windowEntry.date < startDateWindow) {
-                        break; // Out of 7-day window
+                    // Ensure the day is within the 7-day window and is an actual duty day
+                    if (windowEntry.date < startDateWindow || !windowEntry.isActualDuty) {
+                        continue;
                     }
 
                     // Only count if it's an early start AND NOT part of a previously flagged consecutive block
@@ -834,31 +893,8 @@
                     }
                 }
 
-                // If we found more than 3 early starts (not covered by consecutive flags) in this 7-day window
                 if (earlyStartsInWindowCount > earlyStartsThreshold) {
                     addFlag(`Early Start Flag (7-Day) [EA 14.8]: ${earlyStartsInWindowCount} early starts in 7 days ending ${roster[i].dateString} (${earlyStartDatesInWindow.join(', ')}). (Usually max 3, unless agreed).`);
-                    // IMPORTANT: To prevent redundant flagging for the same *non-consecutive cluster*
-                    // as the window slides forward, we should "consume" these early starts by marking them.
-                    // This prevents, for example, a Day 1, Day 3, Day 5, Day 7 cluster from being flagged multiple times.
-                    // We'll mark the specific days that form this 7-day violation for this *specific flag instance*.
-                    // This requires a new property or a set to track already-flagged 7-day clusters.
-                    // For simplicity and given user's emphasis on "not flagging the same days",
-                    // the current logic implies that if Day N ends a violation, it's flagged ONCE for that Day N.
-                    // Future windows ending on Day N+1, N+2 etc. will re-evaluate.
-                    // However, to ensure a single flag for a "cluster":
-                    // A simple heuristic for 7-day is to only flag if `roster[i]` is an early start itself
-                    // and `earlyStartsInWindowCount` hits the threshold for the first time *for this specific window*.
-                    // The current iteration (`i`) already ensures each `endDate` is checked once.
-                    // This currently flags each *distinct window ending day* where the criteria are met.
-                    // For example:
-                    // ES, ES, -, ES, -, ES, ES (7 days total, 5 ES).
-                    // This will be flagged when the window ends on the last ES.
-                    // If the roster continued, a window ending on the next day (if it was a non-ES) might still
-                    // contain this same 5 ES cluster.
-                    // A proper "only flag once per unique cluster" would require storing hash of dates or more complex logic.
-                    // Given the request for succinctness and "don't flag the same days" implies primary concern
-                    // about CONSECUTIVE vs 7-DAY. This current implementation prevents CONSECUTIVE from also being 7-DAY.
-                    // We'll stick with this, as it flags each *distinct 7-day window* violation.
                 }
             }
 
@@ -932,8 +968,8 @@
 
             for (let i = 0; i < roster.length; i++) {
                 const entry = roster[i];
-                // Using the helper to determine if it's a duty day
-                if (entry.isActualDuty) { // Use the pre-calculated isActualDuty
+                // Using the pre-calculated isActualDuty
+                if (entry.isActualDuty) { 
                     consecutiveDutyDays++;
                 } else {
                     if (consecutiveDutyDays >= DUTY_TOUR_LENGTH) {
@@ -986,7 +1022,7 @@
                 const currentEntry = roster[i + 1];
 
                 // Ensure the current entry is an actual duty for this calculation
-                if (isNaN(parseTime(prevEntry.debriefTime)) || isNaN(parseTime(currentEntry.briefTime)) || !currentEntry.isActualDuty) { // Use pre-calculated isActualDuty
+                if (isNaN(parseTime(prevEntry.debriefTime)) || isNaN(parseTime(currentEntry.briefTime)) || !currentEntry.isActualDuty) { 
                     continue;
                 }
 
@@ -1067,10 +1103,10 @@
                 const start = buffer[0].split(/\t| {2,}/);
                 for (let i = 0; i < start.length && i < 5; i++) row[i] = start[i];
 
-                const [dd, mon, yyyy] = row[0].split(/[\/\s]/);
+                const [dd, mon, আবদুল্লাহ] = row[0].split(/[\/\s]/);
                 let currentYear = new Date().getFullYear();
-                if (yyyy && !isNaN(Number(yyyy))) {
-                    currentYear = Number(yyyy);
+                if ( আবদুল্লাহ && !isNaN(Number( আবদুল্লাহ ))) {
+                    currentYear = Number( আবদুল্লাহ );
                 }
                 const months = {
                     Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5,
@@ -1082,30 +1118,31 @@
                 row[0] = `${dayOfWeek} ${row[0]}`;
                 const isWeekend = (fullDay === 'Saturday' || fullDay === 'Sunday');
 
-                let summaryParts = [];
                 let detailsLines = [];
+                let summaryParts = [];
                 let foundSummary = false;
+
+                // Process buffer to separate details from final time summary line
                 for (let k = 1; k < buffer.length; k++) {
-                    if (timeSummaryRegex.test(buffer[k])) {
-                        summaryParts = buffer[k].split(/\t| {2,}/);
+                    const line = buffer[k].trim();
+                    if (timeSummaryRegex.test(line)) {
+                        summaryParts = line.split(/\t| {2,}/);
                         foundSummary = true;
-                        break;
                     } else {
-                        detailsLines.push(buffer[k]);
+                        detailsLines.push(line);
                     }
                 }
-                row[5] = detailsLines.join('\n');
+                
+                // Set the details content for the row
+                row[5] = detailsLines.join('\n'); // Join all details lines
 
-                if (!foundSummary && detailsLines.length > 0) {
-                    const lastDetailLine = detailsLines[detailsLines.length - 1];
-                    if (timeSummaryRegex.test(lastDetailLine)) {
-                        summaryParts = lastDetailLine.split(/\t| {2,}/);
-                        detailsLines.pop();
-                        row[5] = detailsLines.join('\n');
+                // Apply summary parts to the row if found
+                if (foundSummary) {
+                    for (let i = 0; i < summaryParts.length; i++) {
+                        row[6 + i] = summaryParts[i];
                     }
                 }
 
-                for (let i = 0; i < summaryParts.length; i++) row[6 + i] = summaryParts[i];
 
                 for (let i = 6; i <= 9; i++) {
                     if (row[i].match(/^\d{1,2}:\d{2}$/)) {
