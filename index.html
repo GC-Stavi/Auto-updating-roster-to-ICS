@@ -202,8 +202,8 @@
         }
 
         .contact-button {
-            padding: 0.8em 1.5em;
-            font-size: 1.1em;
+            padding: 0.6em 1.2em; /* Reduced padding */
+            font-size: 1em; /* Reduced font size */
             font-weight: bold;
             background-color: #007bff; /* A nice blue */
             color: #fff;
@@ -491,7 +491,7 @@
     </div>
 
     <div class="contact-button-container">
-        <a href="mailto:cabela@alliances.com.au?subject=Roster Tool Feedback/Suggestion" class="contact-button">Contact Me</a>
+        <a href="mailto:cabela@alliances.com.au?subject=Roster Tool Feedback/Suggestion" class="contact-button">Help & Feedback</a>
     </div>
 
     <div id="breachInfoModal" class="modal-overlay" style="display: none;">
@@ -578,67 +578,96 @@
             );
         }
 
+        /**
+         * Extracts details and hours/credits from a buffer of lines representing a single roster entry.
+         * This function is now shared by generateICS, parseRosterData, and generatePrintout.
+         * @param {Array<string>} buffer - Array of lines for a single roster entry.
+         * @returns {object} An object containing parsed roster data for one entry.
+         */
+        function processRosterEntryBuffer(buffer) {
+            const rowData = Array(10).fill('');
+            const initialSplit = buffer[0].split(/\t| {2,}/);
+            for (let i = 0; i < initialSplit.length && i < 5; i++) rowData[i] = initialSplit[i];
+
+            const [dayStr, monStr, yyyyVal] = rowData[0].split(/[\/\s]/);
+            let currentYear = new Date().getFullYear();
+            if (yyyyVal && !isNaN(Number(yyyyVal))) {
+                currentYear = Number(yyyyVal);
+            }
+
+            const date = new Date(currentYear, parseMonthString(monStr), Number(dayStr));
+
+            let summaryParts = [];
+            let detailsLines = [];
+            const timeSummaryRegex = /^\d{1,2}:\d{2}[ \t]+\d{1,2}:\d{2}[ \t]+\d{1,2}:\d{2}[ \t]+\d{1,2}:\d{2}$/; // Define here for scope
+
+            // Process buffer to separate details from final time summary line
+            for (let k = 1; k < buffer.length; k++) {
+                const line = buffer[k]; // Preserve leading/trailing spaces for proper splitting later
+                if (timeSummaryRegex.test(line.trim())) { // Test on trimmed line
+                    summaryParts = line.split(/\t| {2,}/); // Split original line
+                } else {
+                    detailsLines.push(line);
+                }
+            }
+            
+            // Set the details content for the row, joining all lines and then trimming
+            const detailsContent = detailsLines.join('\n').trim();
+            rowData[5] = detailsContent; // Details column
+
+            for (let i = 0; i < summaryParts.length; i++) rowData[6 + i] = summaryParts[i];
+
+            const entry = {
+                date: date,
+                dateString: rowData[0],
+                dutyType: rowData[1] ? rowData[1].trim() : '',
+                briefTime: rowData[2] ? rowData[2].trim() : '',
+                debriefTime: rowData[3] ? rowData[3].trim() : '',
+                layover: rowData[4] ? rowData[4].trim() : '',
+                details: rowData[5] ? rowData[5].trim() : '',
+                dutyHours: rowData[6] ? rowData[6].trim() : '',
+                flightHours: rowData[7] ? rowData[7].trim() : '',
+                paxHours: rowData[8] ? rowData[8].trim() : '',
+                creditHours: rowData[9] ? rowData[9].trim() : '',
+                yyyy: currentYear // Include year for ICS generation if needed
+            };
+
+            // Add new properties for rule checking, now done directly in this parser
+            entry.isActualDuty = isDayOfDuty(entry);
+            entry.isEarlyStart = entry.isActualDuty && parseTime(entry.briefTime) < parseTime('06:00');
+            entry.consecutiveFlagged = false; // To be set by the consecutive early start check
+
+            return entry;
+        }
+
+
         function generateICS() {
             let lines = document.getElementById('rosterInput').value.trim().split('\n');
             if (!lines.length) return alert("Paste your roster first.");
             lines = cleanHeaderLines(lines);
 
             const newBlockRegex = /^\d{2}\/\w{3}\/\d{4}[ \t]/;
-            const timeSummaryRegex = /^\d{1,2}:\d{2}[ \t]+\d{1,2}:\d{2}[ \t]+\d{1,2}:\d{2}[ \t]+\d{1,2}:\d{2}$/;
             let buffer = [], events = [];
 
-            function flushRow() {
+            function flushRowInternal() { // Renamed from flushRow to avoid confusion
                 if (!buffer.length) return;
-                const row = Array(10).fill('');
-                const start = buffer[0].split(/\t| {2,}/);
-                for (let i = 0; i < start.length && i < 5; i++) row[i] = start[i];
-
-                const [dd, mon, আবদুল্লাহ] = row[0].split(/[\/\s]/);
-                const d = new Date( আবদুল্লাহ, parseMonthString(mon), dd);
-
-                const brief = row[2] || '00:00';
-                const debrief = row[3] || '00:00';
-                const duty = row[1];
-                // Details now combine all lines before the numbers, without an extra newline
-                const detailsLines = buffer.slice(1);
-                let detailsContent = '';
-                let lastLineIsTimeSummary = false;
-
-                // Check if the very last line of the buffer (after date/duty/etc.) matches timeSummaryRegex
-                if (detailsLines.length > 0 && timeSummaryRegex.test(detailsLines[detailsLines.length - 1].trim())) {
-                    const lastLineParts = detailsLines[detailsLines.length - 1].trim().split(/\t| {2,}/);
-                    for (let i = 0; i < lastLineParts.length; i++) {
-                        row[6 + i] = lastLineParts[i];
-                    }
-                    detailsLines.pop(); // Remove the time summary line from details
-                    lastLineIsTimeSummary = true;
-                }
-                
-                // For any other lines in the buffer (now only details or blank lines from original input)
-                detailsContent = detailsLines.join('\n').trim(); // Join remaining lines for details
-
-                // If the time summary was on a new line, but details were empty, ensure row[5] is empty
-                if (lastLineIsTimeSummary && detailsContent === '' && detailsLines.length === 0) {
-                     row[5] = '';
-                } else {
-                     row[5] = detailsContent;
-                }
-
+                const entry = processRosterEntryBuffer(buffer); // Use the shared processing function
 
                 const formatTime = (t) => t.replace(/:/g, '') + '00';
 
-                const dtStart = আবদুল্লাহ + pad(d.getMonth() + 1) + pad(d.getDate()) + 'T' + formatTime(brief);
-                const dtEnd = আবদুল্লাহ + pad(d.getMonth() + 1) + pad(d.getDate()) + 'T' + formatTime(debrief);
+                // Use entry.yyyy for dtStart/dtEnd
+                const dtStart = entry.yyyy + pad(entry.date.getMonth() + 1) + pad(entry.date.getDate()) + 'T' + formatTime(entry.briefTime);
+                const dtEnd = entry.yyyy + pad(entry.date.getMonth() + 1) + pad(entry.date.getDate()) + 'T' + formatTime(entry.debriefTime);
 
-                events.push(`BEGIN:VEVENT\nSUMMARY:${duty} ${brief} ${row[5].replace(/\n/g, ' | ')}\nDTSTART;TZID=Australia/Brisbane:${dtStart}\nDTEND;TZID=Australia/Brisbane:${dtEnd}\nDESCRIPTION:Brief: ${brief} | ${row[5].replace(/\n/g, ' | ')}\nUID:roster-${dtStart}@roster.local\nDTSTAMP:${dtStart}Z\nEND:VEVENT`);
+                events.push(`BEGIN:VEVENT\nSUMMARY:${entry.dutyType} ${entry.briefTime} ${entry.details.replace(/\n/g, ' | ')}\nDTSTART;TZID=Australia/Brisbane:${dtStart}\nDTEND;TZID=Australia/Brisbane:${dtEnd}\nDESCRIPTION:Brief: ${entry.briefTime} | ${entry.details.replace(/\n/g, ' | ')}\nUID:roster-${dtStart}@roster.local\nDTSTAMP:${dtStart}Z\nEND:VEVENT`);
                 buffer = [];
             }
 
             lines.forEach(line => {
-                if (newBlockRegex.test(line)) flushRow();
+                if (newBlockRegex.test(line)) flushRowInternal();
                 buffer.push(line);
             });
-            flushRow();
+            flushRowInternal(); // Process the last buffer
 
             const ics = `BEGIN:VCALENDAR\nVERSION:2.0\nCALSCALE:GREGORIAN\nMETHOD:PUBLISH\nX-WR-TIMEZONE:Australia/Brisbane\nBEGIN:VTIMEZONE\nTZID:Australia/Brisbane\nBEGIN:STANDARD\nDTSTART:19700101T000000\nTZOFFSETFROM:+1000\nTZOFFSETTO:+1000\nTZNAME:AEST\nEND:STANDARD\nEND:VTIMEZONE\n${events.join('\n')}\nEND:VCALENDAR`;
 
@@ -678,73 +707,21 @@
             lines = cleanHeaderLines(lines);
 
             const newBlockRegex = /^\d{2}\/\w{3}\/\d{4}[ \t]/;
-            const timeSummaryRegex = /^\d{1,2}:\d{2}[ \t]+\d{1,2}:\d{2}[ \t]+\d{1,2}:\d{2}[ \t]+\d{1,2}:\d{2}$/;
             let buffer = [];
             const rosterEntries = [];
 
-            function processBuffer() {
-                if (!buffer.length) return;
-
-                const rowData = Array(10).fill('');
-                const initialSplit = buffer[0].split(/\t| {2,}/);
-                for (let i = 0; i < initialSplit.length && i < 5; i++) rowData[i] = initialSplit[i];
-
-                const [dayStr, monStr, আবদুল্লাহ] = rowData[0].split(/[\/\s]/);
-                let currentYear = new Date().getFullYear();
-                if ( আবদুল্লাহ && !isNaN(Number( আবদুল্লাহ ))) {
-                    currentYear = Number( আবদুল্লাহ );
-                }
-
-                const date = new Date(currentYear, parseMonthString(monStr), Number(dayStr));
-
-                let summaryParts = [];
-                let detailsLines = [];
-                
-                // Iterate through buffer to find details and the final time summary line
-                for (let k = 1; k < buffer.length; k++) {
-                    const line = buffer[k].trim();
-                    if (timeSummaryRegex.test(line)) {
-                        summaryParts = line.split(/\t| {2,}/);
-                        // The loop will break after finding summary, so no need to pop from detailsLines
-                    } else {
-                        detailsLines.push(line);
-                    }
-                }
-                
-                // Join details lines, remove any trailing empty lines from parsing
-                let detailsContent = detailsLines.join('\n').trim();
-                rowData[5] = detailsContent; // Details column
-
-                for (let i = 0; i < summaryParts.length; i++) rowData[6 + i] = summaryParts[i];
-
-                const entry = {
-                    date: date,
-                    dateString: rowData[0],
-                    dutyType: rowData[1] ? rowData[1].trim() : '',
-                    briefTime: rowData[2] ? rowData[2].trim() : '',
-                    debriefTime: rowData[3] ? rowData[3].trim() : '',
-                    layover: rowData[4] ? rowData[4].trim() : '',
-                    details: rowData[5] ? rowData[5].trim() : '',
-                    dutyHours: rowData[6] ? rowData[6].trim() : '',
-                    flightHours: rowData[7] ? rowData[7].trim() : '',
-                    paxHours: rowData[8] ? rowData[8].trim() : '',
-                    creditHours: rowData[9] ? rowData[9].trim() : ''
-                };
-
-                // Add new properties for rule checking
-                entry.isActualDuty = isDayOfDuty(entry);
-                entry.isEarlyStart = entry.isActualDuty && parseTime(entry.briefTime) < parseTime('06:00');
-                entry.consecutiveFlagged = false; // To be set by the consecutive early start check
-
-                rosterEntries.push(entry);
-                buffer = [];
-            }
-
             lines.forEach(line => {
-                if (newBlockRegex.test(line)) flushRow();
+                // If a new block starts and buffer is not empty, process the current buffer
+                if (newBlockRegex.test(line) && buffer.length > 0) {
+                    rosterEntries.push(processRosterEntryBuffer(buffer));
+                    buffer = []; // Clear buffer after processing
+                }
                 buffer.push(line);
             });
-            processBuffer();
+            // Process the last buffer after the loop finishes
+            if (buffer.length > 0) {
+                rosterEntries.push(processRosterEntryBuffer(buffer));
+            }
 
             return rosterEntries;
         }
@@ -1081,7 +1058,6 @@
             tbody.innerHTML = '';
 
             const newBlockRegex = /^\d{2}\/\w{3}\/\d{4}[ \t]/;
-            const timeSummaryRegex = /^\d{1,2}:\d{2}[ \t]+\d{1,2}:\d{2}[ \t]+\d{1,2}:\d{2}[ \t]+\d{1,2}:\d{2}$/;
             let buffer = [];
             let totals = [0, 0, 0, 0];
 
@@ -1096,76 +1072,67 @@
                 return `${h}:${m.toString().padStart(2, '0')}`;
             }
 
-            function flushRow() {
+            function flushRowInternalPrint() { // Renamed from flushRow for print scope
                 if (!buffer.length) return;
 
-                const row = Array(10).fill('');
-                const start = buffer[0].split(/\t| {2,}/);
-                for (let i = 0; i < start.length && i < 5; i++) row[i] = start[i];
+                const entry = processRosterEntryBuffer(buffer); // Use the shared processing function
 
-                const [dd, mon, আবদুল্লাহ] = row[0].split(/[\/\s]/);
-                let currentYear = new Date().getFullYear();
-                if ( আবদুল্লাহ && !isNaN(Number( আবদুল্লাহ ))) {
-                    currentYear = Number( আবদুল্লাহ );
-                }
-                const months = {
-                    Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5,
-                    Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11
-                };
-                const d = new Date(currentYear, parseMonthString(mon), Number(dd));
+                const d = entry.date;
                 const dayOfWeek = d.toLocaleDateString('en-AU', { weekday: 'short' });
                 const fullDay = d.toLocaleDateString('en-AU', { weekday: 'long' });
-                row[0] = `${dayOfWeek} ${row[0]}`;
                 const isWeekend = (fullDay === 'Saturday' || fullDay === 'Sunday');
-
-                let detailsLines = [];
-                let summaryParts = [];
-                let foundSummary = false;
-
-                // Process buffer to separate details from final time summary line
-                for (let k = 1; k < buffer.length; k++) {
-                    const line = buffer[k].trim();
-                    if (timeSummaryRegex.test(line)) {
-                        summaryParts = line.split(/\t| {2,}/);
-                        foundSummary = true;
-                    } else {
-                        detailsLines.push(line);
-                    }
-                }
-                
-                // Set the details content for the row
-                row[5] = detailsLines.join('\n'); // Join all details lines
-
-                // Apply summary parts to the row if found
-                if (foundSummary) {
-                    for (let i = 0; i < summaryParts.length; i++) {
-                        row[6 + i] = summaryParts[i];
-                    }
-                }
-
-
-                for (let i = 6; i <= 9; i++) {
-                    if (row[i].match(/^\d{1,2}:\d{2}$/)) {
-                        totals[i - 6] += parseMinutes(row[i]);
-                    }
-                }
 
                 const tr = document.createElement('tr');
                 if (isWeekend) tr.classList.add('weekend-row');
-                row.forEach(val => {
+                
+                // Construct the row data array for printing, matching the HTML table structure
+                const rowPrintData = [
+                    `${dayOfWeek} ${entry.dateString}`,
+                    entry.dutyType,
+                    entry.briefTime,
+                    entry.debriefTime,
+                    entry.layover,
+                    entry.details, // Details already contain newlines for print
+                    entry.dutyHours,
+                    entry.flightHours,
+                    entry.paxHours,
+                    entry.creditHours
+                ];
+
+                rowPrintData.forEach(val => {
                     const td = document.createElement('td');
                     td.textContent = val;
                     tr.appendChild(td);
                 });
                 tbody.appendChild(tr);
+
+                // Update totals (same as before)
+                for (let i = 0; i < 4; i++) { // Loop for dutyHours, flightHours, paxHours, creditHours
+                    const hourValue = entry.dutyHours; // Get the original value from entry
+                    if (i === 0 && hourValue && hourValue.match(/^\d{1,2}:\d{2}$/)) { // Duty hours
+                        totals[0] += parseMinutes(hourValue);
+                    }
+                    const flightValue = entry.flightHours;
+                    if (i === 1 && flightValue && flightValue.match(/^\d{1,2}:\d{2}$/)) { // Flight hours
+                        totals[1] += parseMinutes(flightValue);
+                    }
+                    const paxValue = entry.paxHours;
+                    if (i === 2 && paxValue && paxValue.match(/^\d{1,2}:\d{2}$/)) { // Pax hours
+                        totals[2] += parseMinutes(paxValue);
+                    }
+                    const creditValue = entry.creditHours;
+                    if (i === 3 && creditValue && creditValue.match(/^\d{1,2}:\d{2}$/)) { // Credit hours
+                        totals[3] += parseMinutes(creditValue);
+                    }
+                }
                 buffer = [];
             }
 
             lines.forEach(line => {
-                if (newBlockRegex.test(line)) flushRow();
+                if (newBlockRegex.test(line)) flushRowInternalPrint();
                 buffer.push(line);
             });
-            flushRow();
+            flushRowInternalPrint(); // Process the last buffer
 
             const summaryRow = document.createElement('tr');
             for (let i = 0; i < 10; i++) {
