@@ -461,6 +461,7 @@
             <p>The tool currently checks for the following potential roster deviations:</p>
             <ul>
                 <li>**Early Starts** [EA 14.8]: More than 3 consecutive starts before 06:00. (Unless mutually agreed by Pilot).</li>
+                <li>**Early Starts (7-Day)** [EA 14.8]: More than 3 early starts in any 7-day period. (Unless mutually agreed by Pilot).</li>
                 <li>**Minimum RDOs** [EA 14.11]: Fewer than 8 Rostered Days Off in a 28-day roster period. (Adjusted for leave).</li>
                 <li>**Weekend Off** [EA 14.16]: No full Saturday and Sunday RDO block in a 28-day roster period. (Unless mutually agreed, leave days count as off).</li>
                 <li>**Consecutive Duty Tours** [EA 14.15]: Two tours each of 6+ consecutive duty days without a minimum of 2 consecutive days off in between. (Unless agreed by Pilot).</li>
@@ -515,6 +516,15 @@
             return n.toString().padStart(2, '0');
         }
 
+        // Helper for month parsing needed for Date objects
+        function parseMonthString(monStr) {
+            const months = {
+                Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5,
+                Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11
+            };
+            return months[monStr];
+        }
+
         function cleanHeaderLines(lines) {
             const knownHeaders = [
                 'Duty Date\tDuty\tBrief Time\tDebrief Time\tLayover\tDetails\tDuty hours\tFlight hours\tPax Hours\tCredit Hours',
@@ -542,12 +552,8 @@
                 const start = buffer[0].split(/\t| {2,}/);
                 for (let i = 0; i < start.length && i < 5; i++) row[i] = start[i];
 
-                const [dd, mon, আবদুল্লাহ] = row[0].split(/[\/\s]/);
-                const months = {
-                    Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5,
-                    Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11
-                };
-                const d = new Date( আবদুল্লাহ, months[mon], dd);
+                const [dd, mon, yyyy] = row[0].split(/[\/\s]/);
+                const d = new Date(yyyy, parseMonthString(mon), dd);
 
                 const brief = row[2] || '00:00';
                 const debrief = row[3] || '00:00';
@@ -555,8 +561,8 @@
                 const details = row[5].replace(/\n/g, ' | ');
                 const formatTime = (t) => t.replace(/:/g, '') + '00';
 
-                const dtStart = আবদুল্লাহ + pad(d.getMonth() + 1) + pad(d.getDate()) + 'T' + formatTime(brief);
-                const dtEnd = আবদুল্লাহ + pad(d.getMonth() + 1) + pad(d.getDate()) + 'T' + formatTime(debrief);
+                const dtStart = yyyy + pad(d.getMonth() + 1) + pad(d.getDate()) + 'T' + formatTime(brief);
+                const dtEnd = yyyy + pad(d.getMonth() + 1) + pad(d.getDate()) + 'T' + formatTime(debrief);
 
                 events.push(`BEGIN:VEVENT\nSUMMARY:${duty} ${brief} ${details}\nDTSTART;TZID=Australia/Brisbane:${dtStart}\nDTEND;TZID=Australia/Brisbane:${dtEnd}\nDESCRIPTION:Brief: ${brief} | ${details}\nUID:roster-${dtStart}@roster.local\nDTSTAMP:${dtStart}Z\nEND:VEVENT`);
                 buffer = [];
@@ -617,17 +623,13 @@
                 const initialSplit = buffer[0].split(/\t| {2,}/);
                 for (let i = 0; i < initialSplit.length && i < 5; i++) rowData[i] = initialSplit[i];
 
-                const [dayStr, monStr, আবদুল্লাহ] = rowData[0].split(/[\/\s]/);
+                const [dayStr, monStr, yyyy] = rowData[0].split(/[\/\s]/);
                 let currentYear = new Date().getFullYear();
-                if ( আবদুল্লাহ && !isNaN(Number( আবদুল্লাহ ))) {
-                    currentYear = Number( আবদুল্লাহ );
+                if (yyyy && !isNaN(Number(yyyy))) {
+                    currentYear = Number(yyyy);
                 }
 
-                const months = {
-                    Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5,
-                    Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11
-                };
-                const date = new Date(currentYear, months[monStr], Number(dayStr));
+                const date = new Date(currentYear, parseMonthString(monStr), Number(dayStr));
 
                 let summaryParts = [];
                 let detailsLines = [];
@@ -654,7 +656,7 @@
                 
                 for (let i = 0; i < summaryParts.length; i++) rowData[6 + i] = summaryParts[i];
 
-                rosterEntries.push({
+                const entry = {
                     date: date,
                     dateString: rowData[0],
                     dutyType: rowData[1] ? rowData[1].trim() : '',
@@ -666,7 +668,14 @@
                     flightHours: rowData[7] ? rowData[7].trim() : '',
                     paxHours: rowData[8] ? rowData[8].trim() : '',
                     creditHours: rowData[9] ? rowData[9].trim() : ''
-                });
+                };
+
+                // Add new properties for rule checking
+                entry.isActualDuty = isDayOfDuty(entry);
+                entry.isEarlyStart = entry.isActualDuty && parseTime(entry.briefTime) < parseTime('06:00');
+                entry.consecutiveFlagged = false; // To be set by the consecutive early start check
+
+                rosterEntries.push(entry);
                 buffer = [];
             }
 
@@ -731,8 +740,7 @@
                 breachList.appendChild(li);
             }
 
-            // Corrected RDO pro-rata table based on Annexure A, Table 1 (8 RDOs and 2 Grey day)
-            // This table is active until the 9 RDOs + 1 Grey Day comes into effect.
+            // RDO pro-rata table based on Annexure A, Table 1 (8 RDOs and 2 Grey day)
             const rdoProRataTable = {
                 0: { rdo: 8, grey: 2 },
                 1: { rdo: 8, grey: 2 },
@@ -766,316 +774,34 @@
             };
 
 
-            // --- Early Starts Deviation Check (4+ consecutive before 06:00) ---
-            const earlyStartsThreshold = 3;
-            const SIX_AM_IN_MINUTES = parseTime('06:00');
+            const earlyStartsThreshold = 3; // More than 3 means 4 or more
 
+            // --- 1. Early Starts Deviation Check (CONSECUTIVE: 4+ consecutive before 06:00) ---
             let consecutiveEarlyStarts = 0;
-            let earlyStartFlagStartDate = null;
+            let currentConsecutiveBlockStartIdx = -1;
 
             for (let i = 0; i < roster.length; i++) {
                 const currentEntry = roster[i];
-                const currentBriefTimeMinutes = parseTime(currentEntry.briefTime);
 
-                // Use isDayOfDuty to ensure we only count actual duty days for consecutive starts
-                if (isDayOfDuty(currentEntry) && currentBriefTimeMinutes < SIX_AM_IN_MINUTES) {
-                    consecutiveEarlyStarts++;
-                    if (earlyStartFlagStartDate === null) {
-                        earlyStartFlagStartDate = currentEntry.dateString;
+                if (currentEntry.isEarlyStart) {
+                    if (consecutiveEarlyStarts === 0) {
+                        currentConsecutiveBlockStartIdx = i;
                     }
+                    consecutiveEarlyStarts++;
                 } else {
                     if (consecutiveEarlyStarts > earlyStartsThreshold) {
-                        addFlag(`Early Start Flag [EA 14.8]: ${consecutiveEarlyStarts} duties before 06:00, started ${earlyStartFlagStartDate}. (Usually max 3, unless agreed).`);
+                        const startDate = roster[currentConsecutiveBlockStartIdx].dateString;
+                        addFlag(`Early Start Flag (Consecutive) [EA 14.8]: ${consecutiveEarlyStarts} consecutive duties before 06:00, started ${startDate}. (Usually max 3, unless agreed).`);
+                        // Mark all days in this consecutive block as flagged
+                        for (let k = currentConsecutiveBlockStartIdx; k < i; k++) {
+                            roster[k].consecutiveFlagged = true;
+                        }
                     }
                     consecutiveEarlyStarts = 0;
-                    earlyStartFlagStartDate = null;
+                    currentConsecutiveBlockStartIdx = -1;
                 }
             }
+            // Handle consecutive block ending at end of roster
             if (consecutiveEarlyStarts > earlyStartsThreshold) {
-                addFlag(`Early Start Flag [EA 14.8]: ${consecutiveEarlyStarts} duties before 06:00, started ${earlyStartFlagStartDate}. (Usually max 3, unless agreed).`);
-            }
-
-            // --- Minimum RDOs Check (fewer than required in 28 days, adjusted for leave) ---
-            const ROSTER_PERIOD_DAYS = 28;
-            let approvedLeaveDays = 0;
-            let actualRdoCount = 0; // Strictly count RDOs (not leave days)
-
-            for (const entry of roster) {
-                const dutyTypeUpper = entry.dutyType.toUpperCase();
-                if (dutyTypeUpper.includes('LVEALV') || dutyTypeUpper.includes('LVEWKD')) {
-                    approvedLeaveDays++;
-                } else if (dutyTypeUpper.includes('RDO')) {
-                    actualRdoCount++;
-                }
-            }
-            
-            const firstDate = roster[0].date;
-            const lastDate = roster[roster.length - 1].date;
-
-            const rosterDurationMs = lastDate.getTime() - firstDate.getTime();
-            const rosterDurationDays = Math.round(rosterDurationMs / (1000 * 60 * 60 * 24)) + 1;
-
-            if (rosterDurationDays >= (ROSTER_PERIOD_DAYS - 1) && rosterDurationDays <= (ROSTER_PERIOD_DAYS + 1)) {
-                // Get the minimum required RDOs from the pro-rata table based on approved leave days
-                // Cap approvedLeaveDays at 28 to prevent errors if input goes beyond table
-                const leaveDaysIndex = Math.min(approvedLeaveDays, 28); 
-                const minRdoRequired = (rdoProRataTable[leaveDaysIndex] || rdoProRataTable[0]).rdo;
-
-                if (actualRdoCount < minRdoRequired) {
-                    addFlag(`RDO Flag [EA 14.11]: Only ${actualRdoCount} RDOs in ${rosterDurationDays}-day period. Minimum ${minRdoRequired} required (adjusted for ${approvedLeaveDays} leave days).`);
-                }
-            }
-
-            // --- One Weekend Off Check (no Sat/Sun RDO block, leave counts as off) ---
-            let hasWeekendOff = false;
-            if (roster.length > 0) {
-                for (let i = 0; i < roster.length - 1; i++) {
-                    const currentEntry = roster[i];
-                    const nextEntry = roster[i + 1];
-
-                    const currentDayOfWeek = currentEntry.date.getDay(); // 0 for Sunday, 6 for Saturday
-                    const nextDayOfWeek = nextEntry.date.getDay();
-
-                    // Check if current day is Saturday and next is Sunday
-                    if (currentDayOfWeek === 6 && nextDayOfWeek === 0) {
-                        // Check if both Saturday and Sunday are "free of duty" (RDO, Grey Day, Standby, or Leave)
-                        if (isDayFreeOfDutyOrLeave(currentEntry) && isDayFreeOfDutyOrLeave(nextEntry)) {
-                            hasWeekendOff = true;
-                            break;
-                        }
-                    }
-                }
-                const firstRosterDateForWeekend = roster[0].date; 
-                const lastRosterDateForWeekend = roster[roster.length - 1].date;
-                const rosterDurationMsForWeekend = lastRosterDateForWeekend.getTime() - firstRosterDateForWeekend.getTime();
-                const rosterDurationDaysForWeekend = Math.round(rosterDurationMsForWeekend / (1000 * 60 * 60 * 24)) + 1;
-
-                if (!hasWeekendOff && rosterDurationDaysForWeekend >= (ROSTER_PERIOD_DAYS - 1) && rosterDurationDaysForWeekend <= (ROSTER_PERIOD_DAYS + 1)) {
-                    addFlag(`Weekend Off Flag [EA 14.16]: No full Sat/Sun RDO block found. (Unless mutually agreed, leave days count as off).`);
-                }
-            }
-
-            // --- Consecutive Duty Tours Check (two 6+ day tours without 2+ consecutive days off in between) ---
-            const DUTY_TOUR_LENGTH = 6;
-            const REQUIRED_DAYS_OFF_BETWEEN_TOURS = 2;
-
-            let consecutiveDutyDays = 0;
-            let dutyTourDetails = [];
-
-            for (let i = 0; i < roster.length; i++) {
-                const entry = roster[i];
-                // Using the helper to determine if it's a duty day
-                if (isDayOfDuty(entry)) {
-                    consecutiveDutyDays++;
-                } else {
-                    if (consecutiveDutyDays >= DUTY_TOUR_LENGTH) {
-                        const tourStartDate = roster[i - consecutiveDutyDays].dateString;
-                        const tourEndDate = roster[i - 1].dateString;
-                        dutyTourDetails.push({ start: tourStartDate, end: tourEndDate, startIndex: i - consecutiveDutyDays });
-                    }
-                    consecutiveDutyDays = 0;
-                }
-
-                if (i === roster.length - 1 && consecutiveDutyDays >= DUTY_TOUR_LENGTH) {
-                    const tourStartDate = roster[i - consecutiveDutyDays + 1].dateString;
-                    const tourEndDate = roster[i].dateString;
-                    dutyTourDetails.push({ start: tourStartDate, end: tourEndDate, startIndex: i - consecutiveDutyDays + 1 });
-                }
-            }
-
-            for (let i = 0; i < dutyTourDetails.length - 1; i++) {
-                const firstTour = dutyTourDetails[i];
-                const secondTour = dutyTourDetails[i + 1];
-
-                let maxConsecutiveDaysOffFound = 0;
-                let currentConsecutiveDaysOffStreak = 0;
-
-                for (let j = firstTour.startIndex + DUTY_TOUR_LENGTH; j < secondTour.startIndex; j++) {
-                    if (j < roster.length) {
-                        const dayBetween = roster[j];
-                        // Days off for this check are RDO or Grey Day
-                        if (dayBetween.dutyType.toUpperCase().includes('RDO') || dayBetween.dutyType.toUpperCase().includes('GREY DAY')) {
-                            currentConsecutiveDaysOffStreak++;
-                        } else {
-                            maxConsecutiveDaysOffFound = Math.max(maxConsecutiveDaysOffFound, currentConsecutiveDaysOffStreak);
-                            currentConsecutiveDaysOffStreak = 0;
-                        }
-                    }
-                }
-                maxConsecutiveDaysOffFound = Math.max(maxConsecutiveDaysOffFound, currentConsecutiveDaysOffStreak);
-
-                if (maxConsecutiveDaysOffFound < REQUIRED_DAYS_OFF_BETWEEN_TOURS) {
-                    addFlag(`Duty Tour Flag [EA 14.15]: Two 6+ day tours with only ${maxConsecutiveDaysOffFound} days off between (min ${REQUIRED_DAYS_OFF_BETWEEN_TOURS} req'd, unless agreed).`);
-                }
-            }
-
-            // --- Rest Periods Between Duty Periods Check ---
-            const HOME_BASE_MIN_REST_HOURS = 12;
-            const HOME_BASE_MIN_REST_MINUTES = HOME_BASE_MIN_REST_HOURS * 60;
-
-            for (let i = 0; i < roster.length - 1; i++) {
-                const prevEntry = roster[i];
-                const currentEntry = roster[i + 1];
-
-                // Ensure the current entry is an actual duty for this calculation
-                if (isNaN(parseTime(prevEntry.debriefTime)) || isNaN(parseTime(currentEntry.briefTime)) || !isDayOfDuty(currentEntry)) {
-                    continue;
-                }
-
-                const prevDebriefMinutes = parseTime(prevEntry.debriefTime);
-                const currentBriefMinutes = parseTime(currentEntry.briefTime);
-
-                let restDurationMinutes;
-                if (currentBriefMinutes >= prevDebriefMinutes) {
-                    restDurationMinutes = currentBriefMinutes - prevDebriefMinutes;
-                } else {
-                    restDurationMinutes = (24 * 60 - prevDebriefMinutes) + currentBriefMinutes;
-                }
-                
-                const isPrevDutyAtHomeBase = prevEntry.layover.trim() === '';
-                const isCurrentDutyAtHomeBase = currentEntry.layover.trim() === '';
-
-                if (isPrevDutyAtHomeBase && isCurrentDutyAtHomeBase) {
-                    if (restDurationMinutes < HOME_BASE_MIN_REST_MINUTES) {
-                        addFlag(`Home Base Rest Flag [EA 14.48]: Only ${formatMinutesToHHMM(restDurationMinutes)} rest between duties on ${prevEntry.dateString} and ${currentEntry.dateString}. (Min ${HOME_BASE_MIN_REST_HOURS} hrs req'd, unless agreed).`);
-                    }
-                } else {
-                    if (restDurationMinutes < HOME_BASE_MIN_REST_MINUTES) {
-                        addFlag(`Info: Short Rest [EA 14.48]: Only ${formatMinutesToHHMM(restDurationMinutes)} rest between duties on ${prevEntry.dateString} and ${currentEntry.dateString}. (May be permissible if away from Home Base or under FRMS).`, true);
-                    }
-                }
-            }
-
-
-            // Display overall result
-            if (flagsFound.length === 0) {
-                const li = document.createElement('li');
-                li.textContent = "No roster flags identified based on current checks. (Beta Mode guidance only).";
-                li.classList.add('no-breach');
-                breachList.appendChild(li);
-            }
-
-            document.getElementById('breachResults').style.display = 'block';
-        }
-
-        // New functions for the modal/popover
-        function showBreachInfoModal() {
-            breachInfoModal.style.display = 'flex'; 
-        }
-
-        function hideBreachInfoModal() {
-            breachInfoModal.style.display = 'none';
-        }
-
-        function generatePrintout() {
-            let lines = document.getElementById('rosterInput').value.trim().split('\n');
-            if (!lines.length) return alert("Paste your roster first.");
-            lines = cleanHeaderLines(lines);
-
-            const tbody = document.getElementById('printTableBody');
-            const table = document.getElementById('printTable');
-            tbody.innerHTML = '';
-
-            const newBlockRegex = /^\d{2}\/\w{3}\/\d{4}[ \t]/;
-            const timeSummaryRegex = /^\d{1,2}:\d{2}[ \t]+\d{1,2}:\d{2}[ \t]+\d{1,2}:\d{2}[ \t]+\d{1,2}:\d{2}$/;
-            let buffer = [];
-            let totals = [0, 0, 0, 0];
-
-            function parseMinutes(time) {
-                const [h, m] = time.split(':').map(Number);
-                return h * 60 + m;
-            }
-
-            function formatMinutes(mins) {
-                const h = Math.floor(mins / 60);
-                const m = mins % 60;
-                return `${h}:${m.toString().padStart(2, '0')}`;
-            }
-
-            function flushRow() {
-                if (!buffer.length) return;
-
-                const row = Array(10).fill('');
-                const start = buffer[0].split(/\t| {2,}/);
-                for (let i = 0; i < start.length && i < 5; i++) row[i] = start[i];
-
-                const [dd, mon, আবদুল্লাহ] = row[0].split(/[\/\s]/);
-                let currentYear = new Date().getFullYear();
-                if ( আবদুল্লাহ && !isNaN(Number( আবদুল্লাহ ))) {
-                    currentYear = Number( আবদুল্লাহ );
-                }
-                const months = {
-                    Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5,
-                    Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11
-                };
-                const d = new Date(currentYear, months[mon], Number(dd));
-                const dayOfWeek = d.toLocaleDateString('en-AU', { weekday: 'short' });
-                const fullDay = d.toLocaleDateString('en-AU', { weekday: 'long' });
-                row[0] = `${dayOfWeek} ${row[0]}`;
-                const isWeekend = (fullDay === 'Saturday' || fullDay === 'Sunday');
-
-                let summaryParts = [];
-                let detailsLines = [];
-                let foundSummary = false;
-                for (let k = 1; k < buffer.length; k++) {
-                    if (timeSummaryRegex.test(buffer[k])) {
-                        summaryParts = buffer[k].split(/\t| {2,}/);
-                        foundSummary = true;
-                        break;
-                    } else {
-                        detailsLines.push(buffer[k]);
-                    }
-                }
-                row[5] = detailsLines.join('\n');
-
-                if (!foundSummary && detailsLines.length > 0) {
-                    const lastDetailLine = detailsLines[detailsLines.length - 1];
-                    if (timeSummaryRegex.test(lastDetailLine)) {
-                        summaryParts = lastDetailLine.split(/\t| {2,}/);
-                        detailsLines.pop();
-                        row[5] = detailsLines.join('\n');
-                    }
-                }
-
-                for (let i = 0; i < summaryParts.length; i++) row[6 + i] = summaryParts[i];
-
-                for (let i = 6; i <= 9; i++) {
-                    if (row[i].match(/^\d{1,2}:\d{2}$/)) {
-                        totals[i - 6] += parseMinutes(row[i]);
-                    }
-                }
-
-                const tr = document.createElement('tr');
-                if (isWeekend) tr.classList.add('weekend-row');
-                row.forEach(val => {
-                    const td = document.createElement('td');
-                    td.textContent = val;
-                    tr.appendChild(td);
-                });
-                tbody.appendChild(tr);
-                buffer = [];
-            }
-
-            lines.forEach(line => {
-                if (newBlockRegex.test(line)) flushRow();
-                buffer.push(line);
-            });
-            flushRow();
-
-            const summaryRow = document.createElement('tr');
-            for (let i = 0; i < 10; i++) {
-                const td = document.createElement('td');
-                if (i === 0) td.textContent = 'TOTAL';
-                if (i >= 6) td.textContent = formatMinutes(totals[i - 6]);
-                summaryRow.appendChild(td);
-            }
-            summaryRow.style.fontWeight = 'bold';
-            summaryRow.style.borderTop = '2px solid #000';
-            tbody.appendChild(summaryRow);
-
-            table.style.display = 'table';
-            window.print();
-        }
-    </script>
-</body>
-</html>
+                const startDate = roster[currentConsecutiveBlockStartIdx].dateString;
+                addFlag(`Early Start Flag (Consecuti
