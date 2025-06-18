@@ -461,8 +461,8 @@
             <p>The tool currently checks for the following potential roster deviations:</p>
             <ul>
                 <li>**Early Starts** [EA 14.8]: More than 3 consecutive starts before 06:00. (Unless mutually agreed by Pilot).</li>
-                <li>**Minimum RDOs** [EA 14.11]: Fewer than 8 Rostered Days Off in a 28-day roster period.</li>
-                <li>**Weekend Off** [EA 14.16]: No full Saturday and Sunday RDO block in a 28-day roster period. (Unless mutually agreed).</li>
+                <li>**Minimum RDOs** [EA 14.11]: Fewer than 8 Rostered Days Off in a 28-day roster period. (Adjusted for leave).</li>
+                <li>**Weekend Off** [EA 14.16]: No full Saturday and Sunday RDO block in a 28-day roster period. (Unless mutually agreed, leave days count as off).</li>
                 <li>**Consecutive Duty Tours** [EA 14.15]: Two tours each of 6+ consecutive duty days without a minimum of 2 consecutive days off in between. (Unless agreed by Pilot).</li>
                 <li>**Rest Periods (Home Base)** [EA 14.48]: Less than 12 hours rest between duties at Home Base. (Unless mutually agreed or FRMS applies where greater).</li>
                 <li>**Short Rest Periods (Info)**: Less than 12 hours rest between duties when one or both duties are away from Home Base. (May be permissible under FRMS, e.g., 10-hour rule).</li>
@@ -542,12 +542,12 @@
                 const start = buffer[0].split(/\t| {2,}/);
                 for (let i = 0; i < start.length && i < 5; i++) row[i] = start[i];
 
-                const [dd, mon, yyyy] = row[0].split(/[\/\s]/);
+                const [dd, mon, আবদুল্লাহ] = row[0].split(/[\/\s]/);
                 const months = {
                     Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5,
                     Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11
                 };
-                const d = new Date(yyyy, months[mon], dd);
+                const d = new Date( আবদুল্লাহ, months[mon], dd);
 
                 const brief = row[2] || '00:00';
                 const debrief = row[3] || '00:00';
@@ -555,8 +555,8 @@
                 const details = row[5].replace(/\n/g, ' | ');
                 const formatTime = (t) => t.replace(/:/g, '') + '00';
 
-                const dtStart = yyyy + pad(d.getMonth() + 1) + pad(d.getDate()) + 'T' + formatTime(brief);
-                const dtEnd = yyyy + pad(d.getMonth() + 1) + pad(d.getDate()) + 'T' + formatTime(debrief);
+                const dtStart = আবদুল্লাহ + pad(d.getMonth() + 1) + pad(d.getDate()) + 'T' + formatTime(brief);
+                const dtEnd = আবদুল্লাহ + pad(d.getMonth() + 1) + pad(d.getDate()) + 'T' + formatTime(debrief);
 
                 events.push(`BEGIN:VEVENT\nSUMMARY:${duty} ${brief} ${details}\nDTSTART;TZID=Australia/Brisbane:${dtStart}\nDTEND;TZID=Australia/Brisbane:${dtEnd}\nDESCRIPTION:Brief: ${brief} | ${details}\nUID:roster-${dtStart}@roster.local\nDTSTAMP:${dtStart}Z\nEND:VEVENT`);
                 buffer = [];
@@ -617,10 +617,10 @@
                 const initialSplit = buffer[0].split(/\t| {2,}/);
                 for (let i = 0; i < initialSplit.length && i < 5; i++) rowData[i] = initialSplit[i];
 
-                const [dayStr, monStr, yyyy] = rowData[0].split(/[\/\s]/);
+                const [dayStr, monStr, আবদুল্লাহ] = rowData[0].split(/[\/\s]/);
                 let currentYear = new Date().getFullYear();
-                if ( yyyy && !isNaN(Number( yyyy ))) {
-                    currentYear = Number( yyyy );
+                if ( আবদুল্লাহ && !isNaN(Number( আবদুল্লাহ ))) {
+                    currentYear = Number( আবদুল্লাহ );
                 }
 
                 const months = {
@@ -681,6 +681,35 @@
             return rosterEntries;
         }
 
+        /**
+         * Checks if a given roster entry represents a day that is free of duty or is a leave day.
+         * This is used for rules like Weekend Off, where leave days might count as "off".
+         * @param {object} entry - The roster entry object.
+         * @returns {boolean} True if the day is an RDO, Grey Day, Standby, or any type of leave.
+         */
+        function isDayFreeOfDutyOrLeave(entry) {
+            const dutyTypeUpper = entry.dutyType.toUpperCase();
+            return dutyTypeUpper.includes('RDO') ||
+                   dutyTypeUpper.includes('GREY DAY') ||
+                   dutyTypeUpper.includes('SBY') || // Standby days are also technically "free of duty" for weekend off check
+                   dutyTypeUpper.includes('LVE'); // Covers LVEALV, LVEWKD, etc.
+        }
+
+        /**
+         * Checks if a given roster entry represents an actual duty day (not RDO, Grey Day, Standby, or Leave).
+         * @param {object} entry - The roster entry object.
+         * @returns {boolean} True if the day is a duty day.
+         */
+        function isDayOfDuty(entry) {
+            const dutyTypeUpper = entry.dutyType.toUpperCase();
+            return !(
+                dutyTypeUpper.includes('RDO') ||
+                dutyTypeUpper.includes('GREY DAY') ||
+                dutyTypeUpper.includes('SBY') ||
+                dutyTypeUpper.includes('LVE')
+            );
+        }
+
         function checkForBreaches() {
             const roster = parseRosterData();
             if (!roster) {
@@ -690,9 +719,9 @@
 
             const breachList = document.getElementById('breachList');
             breachList.innerHTML = '';
-            const flagsFound = []; // Renamed from breachesFound
+            const flagsFound = []; 
 
-            function addFlag(message, isInfo = false) { // Renamed from addBreach
+            function addFlag(message, isInfo = false) { 
                 flagsFound.push(message);
                 const li = document.createElement('li');
                 li.textContent = message;
@@ -702,26 +731,54 @@
                 breachList.appendChild(li);
             }
 
+            // Corrected RDO pro-rata table based on Annexure A, Table 1 (8 RDOs and 2 Grey day)
+            // This table is active until the 9 RDOs + 1 Grey Day comes into effect.
+            const rdoProRataTable = {
+                0: { rdo: 8, grey: 2 },
+                1: { rdo: 8, grey: 2 },
+                2: { rdo: 7, grey: 2 },
+                3: { rdo: 7, grey: 2 },
+                4: { rdo: 7, grey: 2 },
+                5: { rdo: 7, grey: 2 },
+                6: { rdo: 6, grey: 2 },
+                7: { rdo: 6, grey: 2 },
+                8: { rdo: 6, grey: 1 },
+                9: { rdo: 5, grey: 1 },
+                10: { rdo: 5, grey: 1 },
+                11: { rdo: 5, grey: 1 },
+                12: { rdo: 5, grey: 1 },
+                13: { rdo: 4, grey: 1 },
+                14: { rdo: 4, grey: 1 },
+                15: { rdo: 4, grey: 1 },
+                16: { rdo: 3, grey: 1 },
+                17: { rdo: 3, grey: 1 },
+                18: { rdo: 3, grey: 1 },
+                19: { rdo: 3, grey: 1 },
+                20: { rdo: 2, grey: 1 },
+                21: { rdo: 2, grey: 1 },
+                22: { rdo: 2, grey: 0 },
+                23: { rdo: 1, grey: 0 },
+                24: { rdo: 1, grey: 0 },
+                25: { rdo: 1, grey: 0 },
+                26: { rdo: 1, grey: 0 },
+                27: { rdo: 0, grey: 0 },
+                28: { rdo: 0, grey: 0 }
+            };
+
+
             // --- Early Starts Deviation Check (4+ consecutive before 06:00) ---
             const earlyStartsThreshold = 3;
             const SIX_AM_IN_MINUTES = parseTime('06:00');
 
             let consecutiveEarlyStarts = 0;
-            let earlyStartFlagStartDate = null; // Renamed from earlyStartBreachStartDate
+            let earlyStartFlagStartDate = null;
 
             for (let i = 0; i < roster.length; i++) {
                 const currentEntry = roster[i];
                 const currentBriefTimeMinutes = parseTime(currentEntry.briefTime);
 
-                const isActualDutyStartCandidate = !(
-                    currentEntry.dutyType.toUpperCase().includes('RDO') ||
-                    currentEntry.dutyType.toUpperCase().includes('GREY DAY') ||
-                    currentEntry.dutyType.toUpperCase().includes('SBY') ||
-                    currentEntry.dutyType.toUpperCase().includes('LEAVE') ||
-                    isNaN(currentBriefTimeMinutes)
-                );
-
-                if (isActualDutyStartCandidate && currentBriefTimeMinutes < SIX_AM_IN_MINUTES) {
+                // Use isDayOfDuty to ensure we only count actual duty days for consecutive starts
+                if (isDayOfDuty(currentEntry) && currentBriefTimeMinutes < SIX_AM_IN_MINUTES) {
                     consecutiveEarlyStarts++;
                     if (earlyStartFlagStartDate === null) {
                         earlyStartFlagStartDate = currentEntry.dateString;
@@ -738,57 +795,63 @@
                 addFlag(`Early Start Flag [EA 14.8]: ${consecutiveEarlyStarts} duties before 06:00, started ${earlyStartFlagStartDate}. (Usually max 3, unless agreed).`);
             }
 
-            // --- Minimum RDOs Check (fewer than 8 in 28 days) ---
-            const RDO_MINIMUM = 8;
+            // --- Minimum RDOs Check (fewer than required in 28 days, adjusted for leave) ---
             const ROSTER_PERIOD_DAYS = 28;
+            let approvedLeaveDays = 0;
+            let actualRdoCount = 0; // Strictly count RDOs (not leave days)
 
-            if (roster.length > 0) {
-                const firstDate = roster[0].date;
-                const lastDate = roster[roster.length - 1].date;
+            for (const entry of roster) {
+                const dutyTypeUpper = entry.dutyType.toUpperCase();
+                if (dutyTypeUpper.includes('LVEALV') || dutyTypeUpper.includes('LVEWKD')) {
+                    approvedLeaveDays++;
+                } else if (dutyTypeUpper.includes('RDO')) {
+                    actualRdoCount++;
+                }
+            }
+            
+            const firstDate = roster[0].date;
+            const lastDate = roster[roster.length - 1].date;
 
-                const rosterDurationMs = lastDate.getTime() - firstDate.getTime();
-                const rosterDurationDays = Math.round(rosterDurationMs / (1000 * 60 * 60 * 24)) + 1;
+            const rosterDurationMs = lastDate.getTime() - firstDate.getTime();
+            const rosterDurationDays = Math.round(rosterDurationMs / (1000 * 60 * 60 * 24)) + 1;
 
-                if (rosterDurationDays >= (ROSTER_PERIOD_DAYS - 1) && rosterDurationDays <= (ROSTER_PERIOD_DAYS + 1)) {
-                    let rdoCount = 0;
-                    for (const entry of roster) {
-                        if (entry.dutyType.toUpperCase().includes('RDO')) {
-                            rdoCount++;
-                        }
-                    }
+            if (rosterDurationDays >= (ROSTER_PERIOD_DAYS - 1) && rosterDurationDays <= (ROSTER_PERIOD_DAYS + 1)) {
+                // Get the minimum required RDOs from the pro-rata table based on approved leave days
+                // Cap approvedLeaveDays at 28 to prevent errors if input goes beyond table
+                const leaveDaysIndex = Math.min(approvedLeaveDays, 28); 
+                const minRdoRequired = (rdoProRataTable[leaveDaysIndex] || rdoProRataTable[0]).rdo;
 
-                    if (rdoCount < RDO_MINIMUM) {
-                        addFlag(`RDO Flag [EA 14.11]: Only ${rdoCount} RDOs in ${rosterDurationDays}-day period (${firstDate.toLocaleDateString('en-AU')} to ${lastDate.toLocaleDateString('en-AU')}). Minimum ${RDO_MINIMUM} required.`);
-                    }
+                if (actualRdoCount < minRdoRequired) {
+                    addFlag(`RDO Flag [EA 14.11]: Only ${actualRdoCount} RDOs in ${rosterDurationDays}-day period. Minimum ${minRdoRequired} required (adjusted for ${approvedLeaveDays} leave days).`);
                 }
             }
 
-            // --- One Weekend Off Check (no Sat/Sun RDO block) ---
+            // --- One Weekend Off Check (no Sat/Sun RDO block, leave counts as off) ---
             let hasWeekendOff = false;
             if (roster.length > 0) {
                 for (let i = 0; i < roster.length - 1; i++) {
                     const currentEntry = roster[i];
                     const nextEntry = roster[i + 1];
 
-                    const currentDayOfWeek = currentEntry.date.getDay();
+                    const currentDayOfWeek = currentEntry.date.getDay(); // 0 for Sunday, 6 for Saturday
                     const nextDayOfWeek = nextEntry.date.getDay();
 
-                    if (currentDayOfWeek === 6 && nextDayOfWeek === 0) { // Saturday (6), Sunday (0)
-                        if (currentEntry.dutyType.toUpperCase().includes('RDO') &&
-                            nextEntry.dutyType.toUpperCase().includes('RDO')) {
+                    // Check if current day is Saturday and next is Sunday
+                    if (currentDayOfWeek === 6 && nextDayOfWeek === 0) {
+                        // Check if both Saturday and Sunday are "free of duty" (RDO, Grey Day, Standby, or Leave)
+                        if (isDayFreeOfDutyOrLeave(currentEntry) && isDayFreeOfDutyOrLeave(nextEntry)) {
                             hasWeekendOff = true;
                             break;
                         }
                     }
                 }
+                const firstRosterDateForWeekend = roster[0].date; 
+                const lastRosterDateForWeekend = roster[roster.length - 1].date;
+                const rosterDurationMsForWeekend = lastRosterDateForWeekend.getTime() - firstRosterDateForWeekend.getTime();
+                const rosterDurationDaysForWeekend = Math.round(rosterDurationMsForWeekend / (1000 * 60 * 60 * 24)) + 1;
 
-                const firstDate = roster[0].date;
-                const lastDate = roster[roster.length - 1].date;
-                const rosterDurationMs = lastDate.getTime() - firstDate.getTime();
-                const rosterDurationDays = Math.round(rosterDurationMs / (1000 * 60 * 60 * 24)) + 1;
-
-                if (!hasWeekendOff && rosterDurationDays >= (ROSTER_PERIOD_DAYS - 1) && rosterDurationDays <= (ROSTER_PERIOD_DAYS + 1)) {
-                    addFlag(`Weekend Off Flag [EA 14.16]: No full Sat/Sun RDO block found. (Unless mutually agreed).`);
+                if (!hasWeekendOff && rosterDurationDaysForWeekend >= (ROSTER_PERIOD_DAYS - 1) && rosterDurationDaysForWeekend <= (ROSTER_PERIOD_DAYS + 1)) {
+                    addFlag(`Weekend Off Flag [EA 14.16]: No full Sat/Sun RDO block found. (Unless mutually agreed, leave days count as off).`);
                 }
             }
 
@@ -801,14 +864,8 @@
 
             for (let i = 0; i < roster.length; i++) {
                 const entry = roster[i];
-                const isDutyDay = !(
-                    entry.dutyType.toUpperCase().includes('RDO') ||
-                    entry.dutyType.toUpperCase().includes('GREY DAY') ||
-                    entry.dutyType.toUpperCase().includes('SBY') ||
-                    entry.dutyType.toUpperCase().includes('LEAVE')
-                );
-
-                if (isDutyDay) {
+                // Using the helper to determine if it's a duty day
+                if (isDayOfDuty(entry)) {
                     consecutiveDutyDays++;
                 } else {
                     if (consecutiveDutyDays >= DUTY_TOUR_LENGTH) {
@@ -836,6 +893,7 @@
                 for (let j = firstTour.startIndex + DUTY_TOUR_LENGTH; j < secondTour.startIndex; j++) {
                     if (j < roster.length) {
                         const dayBetween = roster[j];
+                        // Days off for this check are RDO or Grey Day
                         if (dayBetween.dutyType.toUpperCase().includes('RDO') || dayBetween.dutyType.toUpperCase().includes('GREY DAY')) {
                             currentConsecutiveDaysOffStreak++;
                         } else {
@@ -859,14 +917,8 @@
                 const prevEntry = roster[i];
                 const currentEntry = roster[i + 1];
 
-                const isCurrentEntryDuty = !(
-                    currentEntry.dutyType.toUpperCase().includes('RDO') ||
-                    currentEntry.dutyType.toUpperCase().includes('GREY DAY') ||
-                    currentEntry.dutyType.toUpperCase().includes('SBY') ||
-                    currentEntry.dutyType.toUpperCase().includes('LEAVE')
-                );
-
-                if (isNaN(parseTime(prevEntry.debriefTime)) || isNaN(parseTime(currentEntry.briefTime)) || !isCurrentEntryDuty) {
+                // Ensure the current entry is an actual duty for this calculation
+                if (isNaN(parseTime(prevEntry.debriefTime)) || isNaN(parseTime(currentEntry.briefTime)) || !isDayOfDuty(currentEntry)) {
                     continue;
                 }
 
@@ -896,9 +948,9 @@
 
 
             // Display overall result
-            if (flagsFound.length === 0) { // Renamed from breachesFound
+            if (flagsFound.length === 0) {
                 const li = document.createElement('li');
-                li.textContent = "No roster flags identified based on current checks. (Beta Mode guidance only)."; // Updated message
+                li.textContent = "No roster flags identified based on current checks. (Beta Mode guidance only).";
                 li.classList.add('no-breach');
                 breachList.appendChild(li);
             }
@@ -947,10 +999,10 @@
                 const start = buffer[0].split(/\t| {2,}/);
                 for (let i = 0; i < start.length && i < 5; i++) row[i] = start[i];
 
-                const [dd, mon, yyyy] = row[0].split(/[\/\s]/);
+                const [dd, mon, আবদুল্লাহ] = row[0].split(/[\/\s]/);
                 let currentYear = new Date().getFullYear();
-                if ( yyyy && !isNaN(Number( yyyy ))) {
-                    currentYear = Number( yyyy );
+                if ( আবদুল্লাহ && !isNaN(Number( আবদুল্লাহ ))) {
+                    currentYear = Number( আবদুল্লাহ );
                 }
                 const months = {
                     Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5,
