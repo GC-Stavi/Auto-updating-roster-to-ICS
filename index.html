@@ -1028,7 +1028,7 @@
             }
 
             // RDO pro-rata table based on Annexure A, Table 1 (8 RDOs and 2 Grey day)
-            // This table is active until the 9 RDOs + 1 Grey Day comes into effect.
+            // This table is active until the 9 RDOs and 1 Grey Day comes into effect.
             const rdoProRataTable = {
                 0: { rdo: 8, grey: 2 },
                 1: { rdo: 8, grey: 2 },
@@ -1136,7 +1136,7 @@
                 const dutyTypeUpper = entry.dutyType.toUpperCase();
                 if (dutyTypeUpper.includes('LVEALV') || dutyTypeUpper.includes('LVEWKD')) {
                     approvedLeaveDays++;
-                } else if (dutyTypeUpper.includes('RDO')) {
+                } else if (dutyTypeUpper.includes('RDO') || dutyTypeUpper.includes('SDO')) { // MODIFIED LINE HERE
                     actualRdoCount++;
                 }
             }
