@@ -691,7 +691,7 @@
             <img src="E190 roster1.png" alt="Alliance Airlines Logo">
         </div>
         <h1>Advanced Roster Management</h1>
-        <p class="tagline">Your all-in-one tool for roster calendar integration and compliance validation.</p>
+        <p class="tagline">Alliance tool for roster calendar integration and compliance validation.</p>
         <hr class="divider">
     </header>
 
@@ -1249,19 +1249,28 @@
                 const prevEntry = roster[i];
                 const currentEntry = roster[i + 1];
 
-                // Ensure the current entry is an actual duty for this calculation
+                // Ensure the current entry is an actual duty for this calculation and times are valid
                 if (isNaN(parseTime(prevEntry.debriefTime)) || isNaN(parseTime(currentEntry.briefTime)) || !currentEntry.isActualDuty) {    
                     continue;
                 }
 
+                // Create full Date objects for precise rest calculation across midnight/multiple days
+                const prevDebriefDate = new Date(prevEntry.date);
                 const prevDebriefMinutes = parseTime(prevEntry.debriefTime);
-                const currentBriefMinutes = parseTime(currentEntry.briefTime);
+                prevDebriefDate.setHours(Math.floor(prevDebriefMinutes / 60), prevDebriefMinutes % 60, 0, 0);
 
-                let restDurationMinutes;
-                if (currentBriefMinutes >= prevDebriefMinutes) {
-                    restDurationMinutes = currentBriefMinutes - prevDebriefMinutes;
-                } else {
-                    restDurationMinutes = (24 * 60 - prevDebriefMinutes) + currentBriefMinutes;
+                const currentBriefDate = new Date(currentEntry.date);
+                const currentBriefMinutes = parseTime(currentEntry.briefTime);
+                currentBriefDate.setHours(Math.floor(currentBriefMinutes / 60), currentBriefMinutes % 60, 0, 0);
+
+                // Calculate the difference in milliseconds, then convert to minutes
+                const restDurationMs = currentBriefDate.getTime() - prevDebriefDate.getTime();
+                let restDurationMinutes = Math.round(restDurationMs / (1000 * 60));
+
+                // Handle potential negative duration if dates/times are out of sequence, though this ideally shouldn't happen with valid roster data
+                if (restDurationMinutes < 0) {
+                     console.warn(`Negative rest duration detected between ${prevEntry.dateString} ${prevEntry.debriefTime} and ${currentEntry.dateString} ${currentEntry.briefTime}. Skipping this rest check.`);
+                     continue; // Skip this pair if calculation yields negative duration
                 }
                 
                 const isPrevDutyAtHomeBase = prevEntry.layover.trim() === '';
