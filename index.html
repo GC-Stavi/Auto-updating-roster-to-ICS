@@ -689,6 +689,14 @@
             }
         }
     </style>
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-Z4Q32GG8W8"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-Z4Q32GG8W8');
+</script>
 </head>
 <body>
     <header>
@@ -696,7 +704,7 @@
             <img src="E190 roster1.png" alt="Alliance Airlines Logo">
         </div>
         <h1>Advanced Roster Management</h1>
-        <p class="tagline">Alliance tool for roster calendar integration and compliance validation.</p>
+        <p class="tagline">Pilot Roster Tool for roster calendar integration and compliance validation.</p>
         <hr class="divider">
     </header>
 
@@ -747,7 +755,7 @@
     </main>
 
     <footer class="contact-button-container">
-        <a href="mailto:cabela@allianceairlines.com.au?subject=Roster Tool Feedback/Suggestion" class="contact-button">Send Feedback or Get Help</a>
+        <a href="mailto:craigabela1@gmail.com?subject=Roster Tool Feedback/Suggestion" class="contact-button">Send Feedback or Get Help</a>
     </footer>
 
     <div id="breachInfoModal" class="modal-overlay" style="display: none;">
@@ -762,6 +770,7 @@
                 <li><strong>Minimum RDOs</strong> [EA 14.11]: Fewer than 8 Rostered Days Off in a 28-day roster period. (Adjusted for leave).</li>
                 <li><strong>Weekend Off</strong> [EA 14.16]: No full Saturday and Sunday RDO block in a 28-day roster period. (Unless mutually agreed, leave days count as off).</li>
                 <li><strong>Consecutive Duty Tours</strong> [EA 14.15]: Two tours each of 6+ consecutive duty days without a minimum of 2 consecutive days off in between. (Unless agreed by Pilot).</li>
+                <li><strong>Sign-on/off Around Leave</strong> [EA 14.17]: Checks for sign-off later than 14:00 before, or sign-on earlier than 12:00 after, a leave block of 7+ days.</li>
                 <li><strong>Rest Periods (Home Base)</strong> [EA 14.48]: Less than 12 hours rest between duties at Home Base. (Unless mutually agreed or FRMS applies where greater).</li>
                 <li><strong>Short Rest Periods (Info)</strong>: Less than 12 hours rest between duties when one or both duties are away from Home Base. (May be permissible under FRMS, e.g., 10-hour rule).</li>
             </ul>
@@ -1264,6 +1273,64 @@
                 }
             }
 
+            // --- Sign-on/off Around Leave Check [EA 14.17] ---
+            const MIN_LEAVE_DURATION_FOR_CHECK = 7;
+            const MAX_DEBRIEF_TIME_BEFORE_LEAVE = parseTime('14:00'); // 840 minutes
+            const MIN_BRIEF_TIME_AFTER_LEAVE = parseTime('12:00');   // 720 minutes
+
+            for (let i = 0; i < roster.length; i++) {
+                const entry = roster[i];
+                const dutyTypeUpper = entry.dutyType.toUpperCase();
+
+                // Check if this is the start of an annual leave block
+                if (dutyTypeUpper.includes('LVEALV') || dutyTypeUpper.includes('LVEWKD')) {
+                    let leaveBlockEndIndex = i;
+                    // Find the end of this consecutive leave block
+                    while (
+                        leaveBlockEndIndex + 1 < roster.length &&
+                        (roster[leaveBlockEndIndex + 1].dutyType.toUpperCase().includes('LVEALV') || roster[leaveBlockEndIndex + 1].dutyType.toUpperCase().includes('LVEWKD'))
+                    ) {
+                        leaveBlockEndIndex++;
+                    }
+
+                    const leaveDuration = leaveBlockEndIndex - i + 1;
+
+                    if (leaveDuration >= MIN_LEAVE_DURATION_FOR_CHECK) {
+                        // Found a qualifying leave block. Now check boundaries.
+
+                        // 1. Check duty BEFORE the leave block
+                        const dutyBeforeIndex = i - 1;
+                        if (dutyBeforeIndex >= 0) {
+                            const dutyBefore = roster[dutyBeforeIndex];
+                            // Check if it's an actual duty day with a valid debrief time
+                            if (isDayOfDuty(dutyBefore) && !isNaN(parseTime(dutyBefore.debriefTime))) {
+                                const debriefTimeMinutes = parseTime(dutyBefore.debriefTime);
+                                if (debriefTimeMinutes > MAX_DEBRIEF_TIME_BEFORE_LEAVE) {
+                                    addFlag(`Leave Buffer Flag [EA 14.17]: Sign-off on ${dutyBefore.dateString} (${dutyBefore.debriefTime}) is after 14:00 before a ${leaveDuration}-day leave block. (Unless agreed).`);
+                                }
+                            }
+                        }
+
+                        // 2. Check duty AFTER the leave block
+                        const dutyAfterIndex = leaveBlockEndIndex + 1;
+                        if (dutyAfterIndex < roster.length) {
+                            const dutyAfter = roster[dutyAfterIndex];
+                            // Check if it's an actual duty day with a valid brief time
+                            if (isDayOfDuty(dutyAfter) && !isNaN(parseTime(dutyAfter.briefTime))) {
+                                const briefTimeMinutes = parseTime(dutyAfter.briefTime);
+                                if (briefTimeMinutes < MIN_BRIEF_TIME_AFTER_LEAVE) {
+                                    addFlag(`Leave Buffer Flag [EA 14.17]: Sign-on on ${dutyAfter.dateString} (${dutyAfter.briefTime}) is before 12:00 after a ${leaveDuration}-day leave block. (Unless agreed).`);
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Skip the loop to the end of the leave block we just processed
+                    i = leaveBlockEndIndex;
+                }
+            }
+
+
             // --- Rest Periods Between Duty Periods Check ---
             const HOME_BASE_MIN_REST_HOURS = 12;
             const HOME_BASE_MIN_REST_MINUTES = HOME_BASE_MIN_REST_HOURS * 60;
@@ -1292,8 +1359,8 @@
 
                 // Handle potential negative duration if dates/times are out of sequence, though this ideally shouldn't happen with valid roster data
                 if (restDurationMinutes < 0) {
-                     console.warn(`Negative rest duration detected between ${prevEntry.dateString} ${prevEntry.debriefTime} and ${currentEntry.dateString} ${currentEntry.briefTime}. Skipping this rest check.`);
-                     continue; // Skip this pair if calculation yields negative duration
+                      console.warn(`Negative rest duration detected between ${prevEntry.dateString} ${prevEntry.debriefTime} and ${currentEntry.dateString} ${currentEntry.briefTime}. Skipping this rest check.`);
+                        continue; // Skip this pair if calculation yields negative duration
                 }
                 
                 const isPrevDutyAtHomeBase = prevEntry.layover.trim() === '';
