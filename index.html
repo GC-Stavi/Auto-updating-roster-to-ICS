@@ -262,7 +262,7 @@
             box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
         }
 
-        /* Primary Button (Download ICS File) */
+        /* Primary Button (Export Calendar) */
         button.primary-button {
             background: linear-gradient(to right, #6366f1, #8b5cf6); /* Vibrant blue-purple gradient */
             border-color: #6366f1;
@@ -281,6 +281,18 @@
             box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
         }
 
+        /* Specific style for the "Load Demo Roster" button */
+        .load-demo-button {
+            background-color: #22c55e; /* A nice green */
+            border-color: #16a34a;
+            color: #ffffff;
+        }
+
+        .load-demo-button:hover {
+            background-color: #16a34a; /* Darker green on hover */
+            border-color: #15803d;
+        }
+
         /* Specific style for the "Check Roster Rules" button */
         .check-breaches-button {
             background-color: #facc15; /* A bright yellow */
@@ -293,7 +305,7 @@
             border-color: #d9a300;
         }
         
-        .check-breaches-button:active {
+        .check-breaches-button:active, .load-demo-button:active {
             transform: translateY(0);
             box-shadow: inset 0 2px 4px rgba(0,0,0,0.15);
         }
@@ -635,6 +647,16 @@
             box-shadow: 0 6px 15px rgba(139, 92, 246, 0.4);
         }
 
+        body.dark-mode .load-demo-button {
+            background-color: #4ade80;
+            border-color: #22c55e;
+            color: #14532d;
+        }
+
+        body.dark-mode .load-demo-button:hover {
+            background-color: #22c55e;
+        }
+
         body.dark-mode .check-breaches-button {
             background-color: #d97706; /* Darker orange-yellow for dark mode */
             border-color: #b45309;
@@ -776,7 +798,7 @@
 
     <header>
         <div class="logo">
-            <img src="E190 roster1.png" alt="RosterGuard Logo">
+            <img src="https://storage.googleapis.com/rostercheck-demonstration/E190%20roster1.png" alt="RosterGuard Logo">
         </div>
         <p class="tagline">Independent Roster Analysis for Compliance & Calendar Sync.</p>
         <hr class="divider">
@@ -803,9 +825,10 @@
         <div class="main-buttons-row">
             <div class="left-buttons">
                 <button onclick="generatePrintout()">Print Roster</button>
-                <button onclick="generateICS()" class="primary-button">Download ICS File</button>
+                <button onclick="generateICS()" class="primary-button">Export Calendar</button>
             </div>
             <div class="right-buttons">
+                <button onclick="loadDemoRoster()" class="load-demo-button">Load Demo Roster</button>
                 <button onclick="checkForBreaches()" class="check-breaches-button">Check Roster Rules</button>
                 <button class="info-button" onclick="showBreachInfoModal()">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-info"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
@@ -1433,6 +1456,116 @@
         // New function for the dummy upload button
         function showComingSoon() {
             alert("PDF and file upload functionality is coming soon!");
+        }
+
+        function loadDemoRoster() {
+            const demoRoster = `23/Jun/2025	MVO	10:15	19:35	ROK	
+QF1896 BNE / ISA/- 11:22L/ 14:00L
+QF1895 ISA / BNE/- 14:37L/ 16:55L
+QF1994 BNE / ROK/- 17:59L/ 19:20L
+The Edge Apartment Hotel
+9:20	9:20	6:17	-	6:17
+24/Jun/2025	MVO	07:55	16:05		
+QF1898 BNE / HTI/- 11:51L/ 13:37L
+QF1899 HTI / BNE/- 14:13L/ 15:50L
+QF1871 ROK / BNE/- 08:40L/ 09:50L
+8:10	8:10	3:23	1:10	3:23
+25/Jun/2025	SBY-FC				
+BNE / BNE/- 04:30L/ 16:30L
+26/Jun/2025	FLY	04:05	10:57		
+QF1892 BNE / ISA/- 05:02L/ 07:54L
+QF1891 ISA / BNE/- 08:33L/ 10:42L
+6:52	6:52	5:01	-	5:01
+27/Jun/2025	GREY				
+BNE / BNE/- 00:00L/ 23:59L
+28/Jun/2025	RDO				
+BNE / BNE/- 00:00L/ 23:59L
+29/Jun/2025	RDO				
+BNE / BNE/- 00:00L/ 23:59L
+30/Jun/2025	FLY	04:00	20:14		
+QF357 BNE / HIR/- 11:58L/ 16:19L
+QF358 HIR / BNE/- 17:35L/ 19:44L
+10:14	9:59	6:30	-	6:30
+01/Jul/2025	MVO	04:00	20:49	NTL	
+QF1965 BNE / NTL/- 14:04L/ 15:26L
+QF1966 NTL / BNE/- 16:11L/ 17:26L
+QF1967 BNE / NTL/- 19:13L/ 20:34L
+Mercure Newcastle
+7:49	7:49	3:58	-	3:58
+02/Jul/2025	FLY	04:05	20:28	NTL	
+QF1966 NTL / BNE/- 15:58L/ 17:11L
+QF1967 BNE / NTL/- 18:47L/ 20:13L
+Mercure Newcastle
+5:23	5:23	2:39	-	2:39
+03/Jul/2025	MVO	04:05	11:44		
+QF1964 NTL / BNE/- 10:09L/ 11:29L
+2:39	2:39	1:20	-	1:20
+04/Jul/2025	RDO				
+BNE / BNE/- 00:00L/ 23:59L
+05/Jul/2025	RDO				
+BNE / BNE/- 00:00L/ 23:59L
+06/Jul/2025	FLY	16:40	22:18		
+QF1868 BNE / TSV/- 17:33L/ 19:40L
+QF1869 TSV / BNE/- 20:17L/ 22:03L
+5:38	5:38	3:53	-	3:53
+07/Jul/2025	FLY	16:05	20:42		
+QF1948 BNE / EMD/- 17:07L/ 18:29L
+QF1949 EMD / BNE/- 19:00L/ 20:27L
+4:37	4:37	2:49	-	2:49
+08/Jul/2025	RDO				
+BNE / BNE/- 00:00L/ 23:59L
+09/Jul/2025	RDO				
+BNE / BNE/- 00:00L/ 23:59L
+10/Jul/2025	MVP	09:10	13:35	DRW	
+VA447DHD BNE / DRW/- 09:55L/ 13:20L
+Oaks Darwin Elan Hotel
+4:55	-	-	3:55	-
+11/Jul/2025	FLY	04:45	13:25	DRW	
+QQ4801 DRW / GTS/- 05:52L/ 07:27L
+QQ4811 GTS / ASP/- 08:06L/ 08:58L
+QQ4812 ASP / GTS/- 09:43L/ 10:51L
+QQ4804 GTS / DRW/- 11:34L/ 13:10L
+Oaks Darwin Elan Hotel
+8:40	8:40	5:11	-	5:11
+12/Jul/2025	FLY	05:00	11:12	DRW	
+QF1958 DRW / ASP/- 05:58L/ 08:01L
+QF1959 ASP / DRW/- 08:58L/ 10:57L
+Oaks Darwin Elan Hotel
+6:12	6:12	4:02	-	4:02
+13/Jul/2025	FLY	05:15	12:11	DRW	
+QF1889 DRW / CNS/- 06:12L/ 09:09L
+QF1888 CNS / DRW/- 09:56L/ 11:56L
+Oaks Darwin Elan Hotel
+6:56	6:56	4:57	-	4:57
+14/Jul/2025	MVP	11:40	17:25		
+QF825DHD DRW / BNE/- 12:25L/ 17:10L
+5:15	-	-	4:15	-
+15/Jul/2025	FLY	06:05	15:39		
+QF1876 BNE / ROK/- 07:01L/ 08:22L
+QF1877 ROK / BNE/- 09:13L/ 10:24L
+QF1994 BNE / PPP/- 11:12L/ 12:51L
+QF1995 PPP / BNE/- 13:46L/ 15:24L
+9:34	9:34	5:49	-	5:49
+16/Jul/2025	RDO				
+BNE / BNE/- 00:00L/ 23:59L
+17/Jul/2025	RDO				
+BNE / BNE/- 00:00L/ 23:59L
+18/Jul/2025	FLY	09:25	14:35		
+QF1802 BNE / MKY/- 10:25L/ 12:05L
+QF1803 MKY / BNE/- 12:55L/ 14:20L
+5:10	5:10	3:05	-	3:05
+19/Jul/2025	MVO	07:25	15:40	NTL	
+QF1903 BNE / CBR/- 08:25L/ 10:15L
+QF1906 CBR / BNE/- 10:55L/ 12:40L
+QF1965 BNE / NTL/- 14:00L/ 15:25L
+Mercure Newcastle
+8:15	8:15	5:00	-	5:00
+20/Jul/2025	FLY	15:05	20:35		
+QF1966 NTL / BNE/- 16:05L/ 17:25L
+QF1967 BNE / NTL/- 18:55L/ 20:20L
+Mercure Newcastle
+5:30	5:30	2:45	-	2:45`;
+            document.getElementById('rosterInput').value = demoRoster;
         }
 
         function generatePrintout() {
