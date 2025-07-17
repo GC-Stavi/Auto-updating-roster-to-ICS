@@ -826,9 +826,10 @@
                     <th>Duty</th>
                     <th>Brief</th>
                     <th>Debrief</th>
-                    <th>Layover</th>
+                    <th>LO</th>
                     <th>Details</th>
                     <th>Duty</th>
+                    <th>FDP</th>
                     <th>Flight</th>
                     <th>Pax</th>
                     <th>Credit</th>
@@ -937,7 +938,7 @@
 
         function cleanHeaderLines(lines) {
             const knownHeaders = [
-                'Duty Date\tDuty\tBrief Time\tDebrief Time\tLayover\tDetails\tDuty hours\tFlight hours\tPax Hours\tCredit Hours',
+                'Duty Date\tDuty\tBrief Time\tDebrief Time\tLayover\tDetails\tDuty hours\tFlight Duty Period\tFlight hours\tPax Hours\tCredit Hours',
                 'Duty\tDate\tDuty\tBrief\tTime\tDebrief\tTime\tLayover'
             ];
             return lines.filter(line =>
@@ -954,7 +955,7 @@
          * @returns {object} An object containing parsed roster data for one entry.
          */
         function processRosterEntryBuffer(buffer) {
-            const rowData = Array(10).fill('');
+            const rowData = Array(11).fill(''); // Updated to 11 columns for the new FDP column
             const initialSplit = buffer[0].split(/\t| {2,}/);
             // Ensure initialSplit has at least 5 elements before accessing index 4
             for (let i = 0; i < initialSplit.length && i < 5; i++) rowData[i] = initialSplit[i];
@@ -969,13 +970,19 @@
 
             let summaryParts = [];
             let detailsLines = [];
-            const timeSummaryRegex = /^\d{1,2}:\d{2}[ \t]+\d{1,2}:\d{2}[ \t]+\d{1,2}:\d{2}[ \t]+\d{1,2}:\d{2}$/; // Define here for scope
+            const timeSummaryRegex = /^(\d{1,2}:\d{2}|-|)[ \t]*(\d{1,2}:\d{2}|-|)[ \t]*(\d{1,2}:\d{2}|-|)[ \t]*(\d{1,2}:\d{2}|-|)[ \t]*(\d{1,2}:\d{2}|-|)$|^(\d{1,2}:\d{2})$/; // Handle both 5-column and single-column formats
 
             // Process buffer to separate details from final time summary line
             for (let k = 1; k < buffer.length; k++) {
                 const line = buffer[k]; // Preserve leading/trailing spaces for proper splitting later
-                if (timeSummaryRegex.test(line.trim())) { // Test on trimmed line
-                    summaryParts = line.split(/\t| {2,}/); // Split original line
+                const trimmedLine = line.trim();
+                if (timeSummaryRegex.test(trimmedLine)) { // Test on trimmed line
+                    // Handle single time value (like TRG entries)
+                    if (/^\d{1,2}:\d{2}$/.test(trimmedLine)) {
+                        summaryParts = [trimmedLine, '', '', '', ''];
+                    } else {
+                        summaryParts = line.split(/\t| {2,}/); // Split original line
+                    }
                 } else {
                     detailsLines.push(line);
                 }
@@ -996,9 +1003,10 @@
                 layover: rowData[4] ? rowData[4].trim() : '',
                 details: rowData[5] ? rowData[5].trim() : '',
                 dutyHours: rowData[6] ? rowData[6].trim() : '',
-                flightHours: rowData[7] ? rowData[7].trim() : '',
-                paxHours: rowData[8] ? rowData[8].trim() : '',
-                creditHours: rowData[9] ? rowData[9].trim() : '',
+                flightDutyPeriod: rowData[7] ? rowData[7].trim() : '', // New FDP column
+                flightHours: rowData[8] ? rowData[8].trim() : '', // Shifted from index 7 to 8
+                paxHours: rowData[9] ? rowData[9].trim() : '', // Shifted from index 8 to 9
+                creditHours: rowData[10] ? rowData[10].trim() : '', // Shifted from index 9 to 10
                 yyyy: currentYear // Include year for ICS generation if needed
             };
 
@@ -1438,10 +1446,10 @@
 
             const newBlockRegex = /^\d{2}\/\w{3}\/\d{4}[ \t]/;
             let buffer = [];
-            let totals = [0, 0, 0, 0];
+            let totals = [0, 0, 0, 0, 0]; // Updated to 5 totals for the new FDP column
 
             function parseMinutes(time) {
-                if (!time || !time.includes(':')) return 0;
+                if (!time || !time.includes(':') || time === '-') return 0;
                 const [h, m] = time.split(':').map(Number);
                 return h * 60 + m;
             }
@@ -1468,7 +1476,7 @@
                 // Construct the row data array for printing
                 const rowPrintData = [
                     `${dayOfWeek} ${entry.dateString}`, entry.dutyType, entry.briefTime, entry.debriefTime,
-                    entry.layover, entry.details, entry.dutyHours, entry.flightHours, entry.paxHours, entry.creditHours
+                    entry.layover, entry.details, entry.dutyHours, entry.flightDutyPeriod, entry.flightHours, entry.paxHours, entry.creditHours
                 ];
 
                 rowPrintData.forEach(val => {
@@ -1479,9 +1487,10 @@
                 tbody.appendChild(tr);
 
                 totals[0] += parseMinutes(entry.dutyHours);
-                totals[1] += parseMinutes(entry.flightHours);
-                totals[2] += parseMinutes(entry.paxHours);
-                totals[3] += parseMinutes(entry.creditHours);
+                totals[1] += parseMinutes(entry.flightDutyPeriod); // New FDP total
+                totals[2] += parseMinutes(entry.flightHours); // Shifted from index 1 to 2
+                totals[3] += parseMinutes(entry.paxHours); // Shifted from index 2 to 3
+                totals[4] += parseMinutes(entry.creditHours); // Shifted from index 3 to 4
                 
                 buffer = [];
             }
@@ -1493,10 +1502,10 @@
             flushRowInternalPrint(); // Process the last buffer
 
             const summaryRow = document.createElement('tr');
-            for (let i = 0; i < 10; i++) {
+            for (let i = 0; i < 11; i++) { // Updated to 11 columns
                 const td = document.createElement('td');
                 if (i === 0) td.textContent = 'TOTAL';
-                if (i >= 6) td.textContent = formatMinutes(totals[i - 6]);
+                if (i >= 6) td.textContent = formatMinutes(totals[i - 6]); // Adjusted for new column
                 summaryRow.appendChild(td);
             }
             summaryRow.style.fontWeight = 'bold';
