@@ -1,4 +1,4 @@
- // NOTE: The main roster parsing and ICS generation script is assumed to be in an external file
+// NOTE: The main roster parsing and ICS generation script is assumed to be in an external file
         // or would be placed here. The following includes the UI interaction logic.
 
         // Global variable to hold the modal element references
@@ -49,11 +49,28 @@
         }
 
         function cleanHeaderLines(lines) {
+            // Expanded blocklist to catch all known header and summary/footer lines
             const knownHeaders = [
-                'Duty Date\tDuty\tBrief Time\tDebrief Time\tLayover\tDetails\tDuty hours\tFlight Duty Period\tFlight hours\tPax Hours\tCredit Hours',
-                'Duty\tDate\tDuty\tBrief\tTime\tDebrief\tTime\tLayover'
+                'Duty Date',      // Catches the main header
+                'CrewName',       // Catches "Crew Name"
+                'CrewID',         // Catches "Crew ID"
+                '~',              // Catches the date range line like "18-Aug-2025 ~ 14-Sep-2025"
+                'DutyHours',      // Catches "Duty Hours" from the summary
+                'FlightDutyPeriod',// Catches "Flight Duty Period" from the summary
+                'DaysOff',        // Catches "Days Off" from the summary
+                'SBY',            // Catches "SBY" from the summary
+                'CredHours',      // Catches "Cred Hours" from the summary
+                'ObsHours',       // Catches "Obs Hours" from the summary
+                'FlightHours',    // Catches "Flight Hours" from the summary
+                'Layover',        // Catches "Layover" from the summary
+                'WorkingDuties',  // Catches "Working Duties" from the summary
+                'PaxHours'        // Catches "Pax Hours" from the summary
             ];
+            
+            // This logic remains the same
             return lines.filter(line =>
+                // This checks if a line contains any of the keywords from our blocklist.
+                // By removing spaces from both the line and the keyword, it makes the match reliable.
                 !knownHeaders.some(h =>
                     line.replace(/\s+/g, '').includes(h.replace(/\s+/g, ''))
                 )
