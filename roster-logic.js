@@ -2,9 +2,11 @@
 // or would be placed here. The following includes the UI interaction logic.
 
 // Global variable to hold the modal element references
-const pilotInfoModal = document.getElementById('pilotInfoModal');
-const aboutInfoModal = document.getElementById('aboutInfoModal');
-const cabinCrewInfoModal = document.getElementById('cabinCrewInfoModal'); // New modal for Cabin Crew
+const breachInfoModal = document.getElementById('breachInfoModal');
+const aboutInfoModal = document.getElementById('aboutInfoModal'); // New modal reference
+// --- START: CABIN CREW IMPLANT ---
+const cabinCrewInfoModal = document.getElementById('cabinCrewInfoModal');
+// --- END: CABIN CREW IMPLANT ---
 
 function toggleDarkMode() {
     const body = document.body;
@@ -24,21 +26,23 @@ window.onload = function () {
     }
 
     // Add event listener to close modals when clicking outside content
-    pilotInfoModal.addEventListener('click', function(event) {
-        if (event.target === pilotInfoModal) {
-            hidePilotInfoModal();
+    breachInfoModal.addEventListener('click', function(event) {
+        if (event.target === breachInfoModal) {
+            hideBreachInfoModal();
         }
     });
-    aboutInfoModal.addEventListener('click', function(event) {
+    aboutInfoModal.addEventListener('click', function(event) { // New event listener for about modal
         if (event.target === aboutInfoModal) {
             hideAboutInfoModal();
         }
     });
-    cabinCrewInfoModal.addEventListener('click', function(event) { // New listener for Cabin Crew modal
+    // --- START: CABIN CREW IMPLANT ---
+    cabinCrewInfoModal.addEventListener('click', function(event) {
         if (event.target === cabinCrewInfoModal) {
             hideCabinCrewInfoModal();
         }
     });
+    // --- END: CABIN CREW IMPLANT ---
 };
 
 function pad(n) {
@@ -55,10 +59,24 @@ function parseMonthString(monStr) {
 }
 
 function cleanHeaderLines(lines) {
+    // This function is still useful for cleaning repeated headers inside the roster data.
     const knownHeaders = [
-        'Duty Date\tDuty\tBrief Time\tDebrief Time\tLayover\tDetails\tDuty hours\tFlight Duty Period\tFlight hours\tPax Hours\tCredit Hours',
-        'Duty\tDate\tDuty\tBrief\tTime\tDebrief\tTime\tLayover'
+        'Duty Date',
+        'CrewName',
+        'CrewID',
+        '~',
+        'DutyHours',
+        'FlightDutyPeriod',
+        'DaysOff',
+        // 'SBY', // REMOVED: This was too broad and incorrectly filtered valid SBY-FC entries.
+        'CredHours',
+        'ObsHours',
+        'FlightHours',
+        'Layover',
+        'WorkingDuties',
+        'PaxHours'
     ];
+    
     return lines.filter(line =>
         !knownHeaders.some(h =>
             line.replace(/\s+/g, '').includes(h.replace(/\s+/g, ''))
@@ -74,7 +92,8 @@ function cleanHeaderLines(lines) {
  */
 function processRosterEntryBuffer(buffer) {
     const rowData = Array(11).fill(''); // Updated to 11 columns for the new FDP column
-    const initialSplit = buffer[0].split(/\t| {2,}/);
+    // Corrected the split to handle any amount of whitespace, making it more robust for pasted text.
+    const initialSplit = buffer[0].trim().split(/\s+/);
     // Ensure initialSplit has at least 5 elements before accessing index 4
     for (let i = 0; i < initialSplit.length && i < 5; i++) rowData[i] = initialSplit[i];
 
@@ -255,29 +274,59 @@ function formatMinutesToHHMM(totalMinutes) {
 }
 
 function parseRosterData() {
-    let lines = document.getElementById('rosterInput').value.trim().split('\n');
+    let rawText = document.getElementById('rosterInput').value;
+    
+    // Normalize all line endings to \n
+    let processedText = rawText.replace(/\r\n?/g, '\n');
+
+    // Insert a space after the date if it is immediately followed by a letter (e.g., "2025SBY" -> "2025 SBY")
+    processedText = processedText.replace(/(\d{2}\/\w{3}\/\d{2,4})([A-Za-z])/g, '$1 $2');
+    
+    // Ensure each date marker starts on a new line.
+    processedText = processedText.replace(/(\d{2}\/\w{3}\/\d{2,4})/g, '\n$1');
+    
+    // Split into lines and filter out any empty lines that may have been created.
+    let lines = processedText.trim().split('\n').filter(line => line.trim() !== '');
+    
+    // Allow optional leading whitespace before the date pattern on each line.
+    const validLineRegex = /^\s*\d{2}\/\w{3}\/\d{2,4}[ \t]*/;
+    const firstDataIndex = lines.findIndex(line => validLineRegex.test(line));
+
+    if (firstDataIndex === -1) {
+        return null;
+    }
+    lines = lines.slice(firstDataIndex);
+
+    // Truncate the input data before the summary block
+    const summaryStartIndex = lines.findIndex(line => 
+        line.replace(/\s+/g, '').toLowerCase().startsWith('dutyhours')
+    );
+    if (summaryStartIndex !== -1) {
+        lines = lines.slice(0, summaryStartIndex);
+    }
+    
+    lines = cleanHeaderLines(lines);
+
     if (!lines.length || lines[0] === "") {
         return null;
     }
-    lines = cleanHeaderLines(lines);
-
-    const newBlockRegex = /^\d{2}\/\w{3}\/\d{2,4}[ \t]/;
-    let buffer = [];
-    const rosterEntries = [];
-
+    
+    // Correctly handle multiple entries on the same date by splitting them apart.
+    const processedLines = [];
     lines.forEach(line => {
-        // If a new block starts and buffer is not empty, process the current buffer
-        if (newBlockRegex.test(line) && buffer.length > 0) {
-            rosterEntries.push(processRosterEntryBuffer(buffer));
-            buffer = []; // Clear buffer after processing
+        if (validLineRegex.test(line) && processedLines.length > 0) {
+            // Before starting a new entry, add a special marker to end the previous one.
+            processedLines.push('---ENDOFLINEDELIMITER---');
         }
-        buffer.push(line);
+        processedLines.push(line);
     });
-    // Process the last buffer after the loop finishes
-    if (buffer.length > 0) {
-        rosterEntries.push(processRosterEntryBuffer(buffer));
-    }
-
+    
+    const entriesText = processedLines.join('\n').split('---ENDOFLINEDELIMITER---');
+    const rosterEntries = entriesText.map(entryText => {
+        if (entryText.trim() === '') return null;
+        return processRosterEntryBuffer(entryText.trim().split('\n'));
+    }).filter(Boolean); // Filter out any null entries
+    
     return rosterEntries;
 }
 
@@ -311,13 +360,7 @@ function isDayFreeOfDutyOrLeave(entry) {
  * @returns {boolean} True if the day is a duty day.
  */
 function isDayOfDuty(entry) {
-    // For Cabin Crew, Unassigned (U/A) is NOT a duty day
-    const dutyTypeUpper = entry.dutyType.toUpperCase();
-    return !(isRDO(entry) ||
-             dutyTypeUpper.includes('GREY') ||
-             dutyTypeUpper.includes('SBY') ||
-             dutyTypeUpper.includes('U/A') || 
-             isAnnualLeave(entry));
+    return !isDayFreeOfDutyOrLeave(entry);
 }
 
 function checkForBreaches() {
@@ -448,7 +491,8 @@ function checkForBreaches() {
     for (let i = 0; i < dutyTourDetails.length - 1; i++) {
         let daysOffBetween = 0;
         for (let j = dutyTourDetails[i].startIndex + DUTY_TOUR_LENGTH; j < dutyTourDetails[i + 1].startIndex; j++) {
-            if (isRDO(roster[j]) || roster[j].dutyType.toUpperCase().includes('GREY')) {
+            // Changed logic to count ANY non-duty day as a day off for this check.
+            if (!isDayOfDuty(roster[j])) {
                 daysOffBetween++;
             } else {
                 break; 
@@ -534,25 +578,6 @@ function checkForBreaches() {
          addFlag(`Info: A trip longer than 5 nights was found. (Max 1 per roster period is allowed under EA 14.54).`, true);
     }
     
-    // --- NEW Data Validation: Excessive Duration Check ---
-    const DUTY_DURATION_THRESHOLD_MINUTES = 16 * 60; // 16 hours
-    roster.forEach(entry => {
-        const dutyMinutes = parseTime(entry.dutyHours);
-        const fdpMinutes = parseTime(entry.flightDutyPeriod);
-    
-        let excessiveTimeValue = null;
-
-        if (!isNaN(dutyMinutes) && dutyMinutes > DUTY_DURATION_THRESHOLD_MINUTES) {
-            excessiveTimeValue = entry.dutyHours;
-        } else if (!isNaN(fdpMinutes) && fdpMinutes > DUTY_DURATION_THRESHOLD_MINUTES) {
-            excessiveTimeValue = entry.flightDutyPeriod;
-        }
-    
-        if (excessiveTimeValue) {
-          addFlag(`Data Validation Flag: The Duty/FDP on ${entry.dateString} of ${excessiveTimeValue} hours exceeds the typical maximum of 16 hours. This may be a rare operational event (e.g., callout from standby) or could indicate that multiple days of duty have been merged due to a missing date line in the source roster. Please review your entry and consult the FRMS Manual, Appendix A for specific limits.`, false);;
-        }
-    });
-
     // --- Rest Periods & Standby Checks ---
     const HOME_BASE_MIN_REST_MINUTES = 12 * 60;
     for (let i = 0; i < roster.length - 1; i++) {
@@ -616,9 +641,7 @@ function checkForBreaches() {
     document.getElementById('breachResults').style.display = 'block';
 }
 
-
-// --- START: NEW CABIN CREW CHECKER FUNCTIONALITY ---
-
+// --- START: CABIN CREW IMPLANT ---
 function checkForCabinCrewBreaches() {
     gtag('event', 'button_click', { 'button_name': 'check_cabin_crew_rules' });
     const roster = parseRosterData();
@@ -795,28 +818,28 @@ function checkForCabinCrewBreaches() {
     }
     document.getElementById('breachResults').style.display = 'block';
 }
-
-// --- END: NEW CABIN CREW CHECKER FUNCTIONALITY ---
+// --- END: CABIN CREW IMPLANT ---
 
 
 // Functions for the modals
-function showPilotInfoModal() {
-    pilotInfoModal.style.display = 'flex';    
+function showBreachInfoModal() {
+    breachInfoModal.style.display = 'flex';    
 }
 
-function hidePilotInfoModal() {
-    pilotInfoModal.style.display = 'none';
+function hideBreachInfoModal() {
+    breachInfoModal.style.display = 'none';
 }
 
-function showAboutInfoModal() {
+function showAboutInfoModal() { // New function for About modal
     aboutInfoModal.style.display = 'flex';
 }
 
-function hideAboutInfoModal() {
+function hideAboutInfoModal() { // New function for About modal
     aboutInfoModal.style.display = 'none';
 }
 
-// New functions for the Cabin Crew modal
+// --- START: CABIN CREW IMPLANT ---
+// Functions for the Cabin Crew modal
 function showCabinCrewInfoModal() {
     cabinCrewInfoModal.style.display = 'flex';
 }
@@ -824,6 +847,7 @@ function showCabinCrewInfoModal() {
 function hideCabinCrewInfoModal() {
     cabinCrewInfoModal.style.display = 'none';
 }
+// --- END: CABIN CREW IMPLANT ---
 
 // New function for the dummy upload button
 function showComingSoon() {
@@ -951,7 +975,9 @@ function generatePrintout() {
     const table = document.getElementById('printTable');
     tbody.innerHTML = '';
 
-    let totals = [0, 0, 0, 0, 0]; // Updated to 5 totals for the new FDP column
+    // --- Initialize layover count ---
+    let layoverCount = 0;
+    let totals = [0, 0, 0, 0, 0]; 
 
     function parseMinutes(time) {
         if (!time || !time.includes(':') || time === '-') return 0;
@@ -973,8 +999,12 @@ function generatePrintout() {
 
         const tr = document.createElement('tr');
         if (isWeekend) tr.classList.add('weekend-row');
+
+        // --- Increment layover count if a layover exists ---
+        if (entry.layover && entry.layover.trim() !== '') {
+            layoverCount++;
+        }
         
-        // Construct the row data array for printing
         const rowPrintData = [
             `${dayOfWeek} ${entry.dateString}`, entry.dutyType, entry.briefTime, entry.debriefTime,
             entry.layover, entry.details, entry.dutyHours, entry.flightDutyPeriod, entry.flightHours, entry.paxHours, entry.creditHours
@@ -988,17 +1018,21 @@ function generatePrintout() {
         tbody.appendChild(tr);
 
         totals[0] += parseMinutes(entry.dutyHours);
-        totals[1] += parseMinutes(entry.flightDutyPeriod); // New FDP total
-        totals[2] += parseMinutes(entry.flightHours); // Shifted from index 1 to 2
-        totals[3] += parseMinutes(entry.paxHours); // Shifted from index 2 to 3
-        totals[4] += parseMinutes(entry.creditHours); // Shifted from index 3 to 4
+        totals[1] += parseMinutes(entry.flightDutyPeriod); 
+        totals[2] += parseMinutes(entry.flightHours); 
+        totals[3] += parseMinutes(entry.paxHours);
+        totals[4] += parseMinutes(entry.creditHours);
     });
 
+    // --- The repeating header row code has been REMOVED from here. ---
+
     const summaryRow = document.createElement('tr');
-    for (let i = 0; i < 11; i++) { // Updated to 11 columns
+    for (let i = 0; i < 11; i++) {
         const td = document.createElement('td');
         if (i === 0) td.textContent = 'TOTAL';
-        if (i >= 6) td.textContent = formatMinutes(totals[i - 6]); // Adjusted for new column
+        // --- Add the layover count to the correct cell ---
+        if (i === 4) td.textContent = layoverCount;
+        if (i >= 6) td.textContent = formatMinutes(totals[i - 6]);
         summaryRow.appendChild(td);
     }
     summaryRow.style.fontWeight = 'bold';
