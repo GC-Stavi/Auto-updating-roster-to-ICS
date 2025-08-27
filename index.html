@@ -282,18 +282,18 @@
         }
         
         /* Specific style for the "Check Roster Rules" button */
-        .check-breaches-button {
+        .check-rules-button {
             background-color: #facc15; /* A bright yellow */
             border-color: #eab308;
             color: #6d4a00; /* Darker text for contrast */
         }
 
-        .check-breaches-button:hover {
+        .check-rules-button:hover {
             background-color: #eab308; /* Darker yellow on hover */
             border-color: #d9a300;
         }
         
-        .check-breaches-button:active {
+        .check-rules-button:active {
             transform: translateY(0);
             box-shadow: inset 0 2px 4px rgba(0,0,0,0.15);
         }
@@ -635,13 +635,13 @@
             box-shadow: 0 6px 15px rgba(139, 92, 246, 0.4);
         }
 
-        body.dark-mode .check-breaches-button {
+        body.dark-mode .check-rules-button {
             background-color: #d97706; /* Darker orange-yellow for dark mode */
             border-color: #b45309;
             color: #fff;
         }
 
-        body.dark-mode .check-breaches-button:hover {
+        body.dark-mode .check-rules-button:hover {
             background-color: #b45309;
         }
 
@@ -809,10 +809,10 @@
                 <button onclick="generateICS()" class="primary-button">Export Calendar</button>
             </div>
             <div class="right-buttons">
-                <button onclick="checkForBreaches()" class="check-breaches-button">Check Roster Rules</button>
-                <button class="info-button" onclick="showBreachInfoModal()">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-info"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
-                </button>
+                <button onclick="checkForBreaches()" class="check-rules-button">Check Pilot Rules</button>
+                <button class="info-button" onclick="showPilotInfoModal()">?</button>
+                <button onclick="checkForCabinCrewBreaches()" class="check-rules-button">Check Cabin Crew Rules</button>
+                <button class="info-button" onclick="showCabinCrewInfoModal()">?</button>
             </div>
         </div>
 
@@ -846,10 +846,10 @@
         <a href="mailto:craigabela1@gmail.com?subject=Roster Tool Feedback/Suggestion" class="contact-button">Send Feedback or Get Help</a>
     </footer>
 
-    <div id="breachInfoModal" class="modal-overlay" style="display: none;">
+    <div id="pilotInfoModal" class="modal-overlay" style="display: none;">
         <div class="modal-content">
-            <button class="modal-close-button" onclick="hideBreachInfoModal()">&times;</button>
-            <h4>Roster Rule Check Info (Beta Mode)</h4>
+            <button class="modal-close-button" onclick="hidePilotInfoModal()">&times;</button>
+            <h4>Pilot Roster Rule Check Info (Beta Mode)</h4>
             <p>This tool provides general guidance. It has not been tested on a wide audience and may contain inaccuracies. Always refer to the official EA document and the rostering policy for definitive interpretation. This tool flags potential deviations from standard roster rules; some may be permissible if mutually agreed by the Pilot and Alliance Group.</p>
             <p>The tool currently checks for the following potential roster deviations:</p>
             <ul>
@@ -878,6 +878,33 @@
         </div>
     </div>
 
+    <div id="cabinCrewInfoModal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <button class="modal-close-button" onclick="hideCabinCrewInfoModal()">&times;</button>
+            <h4>Cabin Crew Roster Rule Check Info</h4>
+            <p>This tool provides guidance only and is not a substitute for the official EA document. Some rostered duties may be permissible by mutual agreement.</p>
+            <p><strong>Rules Currently Checked:</strong></p>
+            <ul>
+                <li><strong>Max Consecutive Duty Days:</strong> More than 6 consecutive duty days.</li>
+                <li><strong>Minimum RDOs:</strong> Fewer than 8 Rostered Days Off in a 28-day roster.</li>
+                <li><strong>Required Unassigned Days:</strong> Checks if a 28-day roster has exactly 4 U/A days.</li>
+                <li><strong>RDO Buffers:</strong> Checks for the required 22:00-06:00 (single) or 22:00-05:00 (multiple) duty-free periods around RDO blocks.</li>
+                <li><strong>Minimum Rest at Home Base:</strong> Less than 11 hours rest between duties at home base.</li>
+                <li><strong>Minimum Rest Before Reserve:</strong> Less than 10 hours rest before a Reserve duty.</li>
+                <li><strong>Max Reserve Duration:</strong> Reserve duties longer than 12 hours.</li>
+                <li><strong>Max Airport Reserve:</strong> Airport Reserve duties longer than 4 hours.</li>
+                <li><strong>No U/A Days After Leave:</strong> Flags if a U/A day is rostered immediately after annual leave.</li>
+                <li><strong>No Training After Leave:</strong> Flags training/checking duties within 7 days of returning from annual leave.</li>
+            </ul>
+            <p><strong>Rules NOT Currently Checked:</strong></p>
+            <ul>
+                <li>Any Flight Duty Period (FDP) or absolute Duty Time limitations (CAO 48).</li>
+                <li>Rules related to part-time employment.</li>
+                <li>Pay-related allowances (e.g., Extended Duty Allowance).</li>
+            </ul>
+        </div>
+    </div>
+
     <div id="aboutInfoModal" class="modal-overlay" style="display: none;">
         <div class="modal-content">
             <button class="modal-close-button" onclick="hideAboutInfoModal()">&times;</button>
@@ -888,7 +915,7 @@
         </div>
     </div>
 
-    <script src="roster-logic.min.js"></script>       
+    <script src="roster-logic.js"></script>       
    
     </body>
 </html>
