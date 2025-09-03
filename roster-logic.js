@@ -755,15 +755,29 @@ function checkForCabinCrewBreaches() {
                 }
             }
 
-            // Rest Before Reserve Check
-            if (currentEntry.dutyType.toUpperCase().startsWith('RESERVE')) {
-                // For simplicity, we assume reserve starts at 00:00 on its day. A more robust check would parse start time from details.
-                 const reserveStartDate = new Date(currentEntry.date);
-                 const restInMinutes = (reserveStartDate - prevDebriefDate) / (1000 * 60);
-                 if (restInMinutes < BEFORE_RESERVE_REST_MINS) {
-                     addFlag(`Rest Before Reserve Flag [EA 24.4(b)]: Rest period before reserve on ${currentEntry.dateString} may be less than 10 hours.`);
-                 }
-            }
+// Rest Before Reserve Check [EA 24.4(b)]
+if (currentEntry.dutyType.toUpperCase().includes('SBY') || currentEntry.dutyType.toUpperCase().includes('RESERVE')) {
+    // Find the actual start time of the reserve/standby from the details string.
+    const reserveTimeMatch = currentEntry.details.match(/(\d{2}:\d{2})/);
+    
+    if (reserveTimeMatch) {
+        const reserveStartTime = parseTime(reserveTimeMatch[1]);
+        const reserveStartDate = new Date(currentEntry.date);
+        reserveStartDate.setHours(Math.floor(reserveStartTime / 60), reserveStartTime % 60);
+
+        // --- START OF SURGICAL FIX ---
+        // Safeguard: Skip check if the previous duty ends after or at the same time the reserve starts.
+        // This handles same-day duties that are not in chronological order.
+        if (prevDebriefDate >= reserveStartDate) continue; 
+        // --- END OF SURGICAL FIX ---
+
+        const restInMinutes = (reserveStartDate - prevDebriefDate) / (1000 * 60);
+
+        if (restInMinutes < BEFORE_RESERVE_REST_MINS) {
+            addFlag(`Rest Before Reserve Flag [EA 24.4(b)]: Only ${formatMinutesToHHMM(restInMinutes)} rest before reserve on ${currentEntry.dateString}. (Min 10 hrs req'd).`);
+        }
+    }
+}
         }
     }
 
@@ -826,6 +840,34 @@ function checkForCabinCrewBreaches() {
                 }
             }
             i = leaveBlockEndIndex;
+        }
+    }
+
+// --- 7. Rolling 14-Day Applicable Duty Check ---
+    const NINETY_HOURS_IN_MINUTES = 90 * 60;
+    // Iterate through each day of the roster to use it as an end-point for a 14-day window.
+    for (let i = 0; i < roster.length; i++) {
+        const windowEndDate = roster[i].date;
+        const windowStartDate = new Date(windowEndDate);
+        windowStartDate.setDate(windowEndDate.getDate() - 13); // Creates a 14-day window
+
+        let applicableMinutesInWindow = 0;
+
+        // Loop backwards from the current day to sum up hours within the 14-day window.
+        for (let j = i; j >= 0 && roster[j].date >= windowStartDate; j--) {
+            const entryInWindow = roster[j];
+            const dutyTypeUpper = entryInWindow.dutyType.toUpperCase();
+
+            // Use the corrected logic to sum 'Applicable Duty' hours.
+            if (isDayOfDuty(entryInWindow) || dutyTypeUpper.includes('SBYAPT')) {
+                applicableMinutesInWindow += parseTime(entryInWindow.dutyHours);
+            }
+        }
+
+        // If the total in the window exceeds 90 hours, create a flag.
+        if (applicableMinutesInWindow > NINETY_HOURS_IN_MINUTES) {
+            const totalHoursInWindow = formatMinutesToHHMM(applicableMinutesInWindow);
+            addFlag(`Applicable Duty Flag [EA 24.1]: Exceeded 90 hours in the 14-day period ending ${roster[i].dateString}. Total: ${totalHoursInWindow}.`);
         }
     }
 
