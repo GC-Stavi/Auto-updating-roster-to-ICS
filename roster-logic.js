@@ -687,9 +687,9 @@ function checkForCabinCrewBreaches() {
         if (rdoCount < 8) {
             addFlag(`RDO Count Flag [EA 24.3(a)]: Found ${rdoCount} RDOs. A 28-day roster requires a minimum of 8.`);
         }
-        if (uaCount !== 4) {
-            addFlag(`Unassigned Day Flag [EA 24.2(b)]: Found ${uaCount} U/A days. A 28-day roster requires exactly 4. (Note: A lower count may occur if U/A days were assigned prior to roster publication).`);
-        }
+       if (uaCount !== 4) {
+    addFlag(`Unassigned Day Flag [EA 24.2(b)]: Found ${uaCount} U/A days. A 28-day roster requires exactly 4. (Note: A lower count may occur if U/A days were assigned prior to roster publication).`, true);
+}
     }
 
     // --- 3. RDO Buffer Checks ---
