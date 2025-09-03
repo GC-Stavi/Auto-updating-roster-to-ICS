@@ -892,32 +892,41 @@
         </div>
     </div>
 
-    <div id="cabinCrewInfoModal" class="modal-overlay" style="display: none;">
-        <div class="modal-content">
-            <button class="modal-close-button" onclick="hideCabinCrewInfoModal()">&times;</button>
-            <h4>Cabin Crew Roster Rule Check Info</h4>
-            <p>This tool provides guidance only and is not a substitute for the official EA document. Some rostered duties may be permissible by mutual agreement.</p>
-            <p><strong>Rules Currently Checked:</strong></p>
-            <ul>
-                <li><strong>Max Consecutive Duty Days:</strong> More than 6 consecutive duty days.</li>
-                <li><strong>Minimum RDOs:</strong> Fewer than 8 Rostered Days Off in a 28-day roster.</li>
-                <li><strong>Required Unassigned Days:</strong> Checks if a 28-day roster has exactly 4 U/A days.</li>
-                <li><strong>RDO Buffers:</strong> Checks for the required 22:00-06:00 (single) or 22:00-05:00 (multiple) duty-free periods around RDO blocks.</li>
-                <li><strong>Minimum Rest at Home Base:</strong> Less than 11 hours rest between duties at home base.</li>
-                <li><strong>Minimum Rest Before Reserve:</strong> Less than 10 hours rest before a Reserve duty.</li>
-                <li><strong>Max Reserve Duration:</strong> Reserve duties longer than 12 hours.</li>
-                <li><strong>Max Airport Reserve:</strong> Airport Reserve duties longer than 4 hours.</li>
-                <li><strong>No U/A Days After Leave:</strong> Flags if a U/A day is rostered immediately after annual leave.</li>
-                <li><strong>No Training After Leave:</strong> Flags training/checking duties within 7 days of returning from annual leave.</li>
-            </ul>
-            <p><strong>Rules NOT Currently Checked:</strong></p>
-            <ul>
-                <li>Any Flight Duty Period (FDP) or absolute Duty Time limitations (CAO 48).</li>
-                <li>Rules related to part-time employment.</li>
-                <li>Pay-related allowances (e.g., Extended Duty Allowance).</li>
-            </ul>
-        </div>
+ <div id="cabinCrewInfoModal" class="modal-overlay" style="display: none;">
+    <div class="modal-content">
+        <button class="modal-close-button" onclick="hideCabinCrewInfoModal()">&times;</button>
+        <h4>Cabin Crew Roster Rule Check Info</h4>
+        <p>This tool provides guidance only and is not a substitute for the official EA document. Some rostered duties may be permissible by mutual agreement.</p>
+        
+        <p><strong>Rules Currently Checked:</strong></p>
+        <ul>
+            <li><strong>Total Applicable Duty:</strong> Checks for more than 90 hours of "Applicable Duty" in any rolling 14-day period.</li>
+            <li><strong>Max Consecutive Duty Days:</strong> More than 6 consecutive duty days.</li>
+            <li><strong>Minimum RDOs:</strong> Fewer than 8 Rostered Days Off in a 28-day roster.</li>
+            <li><strong>Required Unassigned Days:</strong> Checks if a 28-day roster has exactly 4 U/A days.</li>
+            <li><strong>RDO Buffers:</strong> Checks for the required 22:00-06:00 (single) or 22:00-05:00 (multiple) duty-free periods around RDO blocks.</li>
+            <li><strong>Minimum Rest at Home Base:</strong> Less than 11 hours rest between duties at home base. (Note: This can be reduced to 10 hours for operational needs, or 9 by mutual agreement).</li>
+            <li><strong>Minimum Rest Before Reserve:</strong> Less than 10 hours rest before a Reserve duty.</li>
+            <li><strong>Max Reserve Duration:</strong> Reserve duties longer than 12 hours.</li>
+            <li><strong>Max Airport Reserve:</strong> Airport Reserve duties longer than 4 hours.</li>
+            <li><strong>No U/A Days After Leave:</strong> Flags if a U/A day is rostered immediately after annual leave.</li>
+            <li><strong>No Training After Leave:</strong> Flags training/checking duties within 7 days of returning from annual leave.</li>
+        </ul>
+
+        <p><strong>General Roster Information:</strong></p>
+        <ul>
+             <li>Rosters should be made available at least 7 days before the roster period begins.</li>
+             <li>If no duty is assigned to an Unassigned Day by 18:00 local time the day before, you are not obligated to remain contactable.</li>
+        </ul>
+
+        <p><strong>Rules NOT Currently Checked:</strong></p>
+        <ul>
+            <li><strong>Minimum Days of Duty:</strong> The requirement for a minimum of sixteen duty days per 28-day roster.</li>
+            <li>Any Flight Duty Period (FDP) or absolute Duty Time limitations (CAO 48).</li>
+            <li>Pay-related allowances (e.g., Extended Duty Allowance).</li>
+        </ul>
     </div>
+</div>
 
     <div id="aboutInfoModal" class="modal-overlay" style="display: none;">
         <div class="modal-content">
