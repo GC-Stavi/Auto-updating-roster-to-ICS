@@ -688,7 +688,7 @@ function checkForCabinCrewBreaches() {
             addFlag(`RDO Count Flag [EA 24.3(a)]: Found ${rdoCount} RDOs. A 28-day roster requires a minimum of 8.`);
         }
         if (uaCount !== 4) {
-            addFlag(`Unassigned Day Flag [EA 24.2(b)]: Found ${uaCount} U/A days. A 28-day roster requires exactly 4.`);
+            addFlag(`Unassigned Day Flag [EA 24.2(b)]: Found ${uaCount} U/A days. A 28-day roster requires exactly 4. (Note: A lower count may occur if U/A days were assigned prior to roster publication).`);
         }
     }
 
@@ -767,18 +767,38 @@ function checkForCabinCrewBreaches() {
         }
     }
 
-    // --- 5. Reserve Duration Checks ---
+// --- 5. Reserve Duration Checks ---
     roster.forEach(entry => {
         const dutyTypeUpper = entry.dutyType.toUpperCase();
-        if (dutyTypeUpper.includes('RESERVE')) {
-            if (dutyTypeUpper.includes('AIRPORT')) {
-                // Assuming airport reserve details are in hours, e.g., "4:00" in dutyHours column
-                if (parseTime(entry.dutyHours) > 4 * 60) {
+        
+        // This check now recognizes both RESERVE and SBY duty types.
+        if (dutyTypeUpper.includes('RESERVE') || dutyTypeUpper.includes('SBY')) {
+            
+            let standbyDurationMinutes = 0;
+            // Regex to find two HH:MM times separated by "L/" in the details string.
+            const timeMatch = entry.details.match(/(\d{2}:\d{2})L\/\s*(\d{2}:\d{2})L/);
+
+            // If a match is found, calculate the duration in minutes.
+            if (timeMatch && timeMatch.length === 3) {
+                const startTime = parseTime(timeMatch[1]);
+                const endTime = parseTime(timeMatch[2]);
+                if (!isNaN(startTime) && !isNaN(endTime)) {
+                    standbyDurationMinutes = endTime - startTime;
+                }
+            } else {
+                // Fallback to dutyHours if details parsing fails, though it may be inaccurate.
+                standbyDurationMinutes = parseTime(entry.dutyHours);
+            }
+
+            // Check if it's an Airport Standby (contains SBYAPT or AIRPORT).
+            if (dutyTypeUpper.includes('AIRPORT') || dutyTypeUpper.includes('SBYAPT')) {
+                // Check if the calculated duration exceeds the 4-hour limit (240 minutes).
+                if (standbyDurationMinutes > 240) {
                      addFlag(`Airport Reserve Flag [EA 24.6(a)]: Airport Reserve on ${entry.dateString} exceeds 4 hours.`);
                 }
             } else {
-                 // Assuming home reserve details are in hours
-                 if (parseTime(entry.dutyHours) > 12 * 60) {
+                 // Otherwise, it's a Home Standby. Check against the 12-hour limit (720 minutes).
+                 if (standbyDurationMinutes > 720) {
                      addFlag(`Reserve Duty Flag [EA 24.5(a)(ii)]: Reserve on ${entry.dateString} exceeds 12 hours.`);
                  }
             }
