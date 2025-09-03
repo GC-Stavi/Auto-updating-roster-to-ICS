@@ -363,7 +363,12 @@ function isDayOfDuty(entry) {
     return !isDayFreeOfDutyOrLeave(entry);
 }
 
-function checkForBreaches() {
+function checkForBreaches() {// --- Roster Type Check ---
+    const pilotCheckRawText = document.getElementById('rosterInput').value.toUpperCase();
+    if (pilotCheckRawText.includes('U/A') || pilotCheckRawText.includes('SBY-CC')) {
+        alert("This appears to be a Cabin Crew roster. Please use the 'Check Cabin Crew Rules' button instead.");
+        return; // Stop the function
+    }
     gtag('event', 'button_click', { 'button_name': 'check_roster_rules' });
     const roster = parseRosterData();
     if (!roster) {
@@ -642,7 +647,12 @@ function checkForBreaches() {
 }
 
 // --- START: CABIN CREW IMPLANT ---
-function checkForCabinCrewBreaches() {
+function checkForCabinCrewBreaches() {// --- Roster Type Check ---
+    const ccCheckRawText = document.getElementById('rosterInput').value.toUpperCase();
+    if (ccCheckRawText.includes('GREY') || ccCheckRawText.includes('SBY-FC')) {
+        alert("This appears to be a Pilot roster. Please use the 'Check Pilot Rules' button instead.");
+        return; // Stop the function
+    }
     gtag('event', 'button_click', { 'button_name': 'check_cabin_crew_rules' });
     const roster = parseRosterData();
     if (!roster) {
